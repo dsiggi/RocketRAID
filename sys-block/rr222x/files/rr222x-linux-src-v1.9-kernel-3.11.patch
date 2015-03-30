@@ -1,0 +1,295 @@
+diff -uraN rr222x-linux-src-v1.9.orig/inc/linux/Makefile.def rr222x-linux-src-v1.9/inc/linux/Makefile.def
+--- rr222x-linux-src-v1.9.orig/inc/linux/Makefile.def	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/inc/linux/Makefile.def	2013-09-29 18:19:39.144613115 +0200
+@@ -74,19 +74,30 @@
+ KERNELDIR := /lib/modules/$(shell uname -r)/build
+ endif
+ 
+-KERNEL_VER := 2.$(shell expr `grep LINUX_VERSION_CODE $(KERNELDIR)/include/linux/version.h | cut -d\  -f3` / 256 % 256)
++VERSION_H := $(shell sh -c " \
++if test -f $(KERNELDIR)/include/linux/version.h; then \
++    echo $(KERNELDIR)/include/linux/version.h; \
++elif test -f $(KERNELDIR)/include/generated/uapi/linux/version.h; then \
++    echo $(KERNELDIR)/include/generated/uapi/linux/version.h; \
++fi")
++
++MAJOR := $(shell expr `grep LINUX_VERSION_CODE $(VERSION_H) | cut -d\  -f3` / 65536 % 65536)
++MINOR := $(shell expr `grep LINUX_VERSION_CODE $(VERSION_H) | cut -d\  -f3` / 256 % 256)
++KERNEL_VER := $(MAJOR).$(MINOR)
+ 
+ ifeq ($(KERNEL_VER),)
+ $(error Cannot find kernel version. Check $(KERNELDIR)/include/linux/version.h.)
+ endif
+ 
++ifneq ($(MAJOR), 3)
+ ifneq ($(KERNEL_VER), 2.6)
+ ifneq ($(KERNEL_VER), 2.4)
+-$(error Only kernel 2.4/2.6 is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++endif
+ endif
+ endif
+ 
+-ifeq ($(KERNEL_VER), 2.6)
++ifneq ($(KERNEL_VER), 2.4)
+ 
+ TARGET := $(TARGETNAME).ko
+ 
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/hptinfo.c rr222x-linux-src-v1.9/osm/linux/hptinfo.c
+--- rr222x-linux-src-v1.9.orig/osm/linux/hptinfo.c	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/hptinfo.c	2013-09-29 18:19:39.144613115 +0200
+@@ -8,6 +8,7 @@
+ #include "osm_linux.h"
+ #include "hptintf.h"
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ typedef struct _hpt_GET_INFO {
+ 	char *buffer;
+ 	int buflength;
+@@ -52,6 +53,10 @@
+ 	hpt_copy_mem_info(pinfo, buf, len);
+ 	return len;
+ }
++#else // >= KERNEL_VERSION(3,10,0)
++typedef struct seq_file HPT_GET_INFO;
++#define hpt_copy_info seq_printf
++#endif
+ 
+ #define HPT_DO_IOCTL(code, inbuf, insize, outbuf, outsize) ({\
+ 	IOCTL_ARG arg;\
+@@ -181,7 +186,7 @@
+ 					devinfo.u.device.ControllerId+1,
+ 					devinfo.u.device.PathId+1,
+ 					devinfo.u.device.TargetId+1,
+-					devinfo.u.device.IdentifyData.ModelNumber
++					(char*)devinfo.u.device.IdentifyData.ModelNumber
+ 				);
+ 		else {
+ 			memcpy(sn, devinfo.u.device.IdentifyData.SerialNumber,
+@@ -193,7 +198,7 @@
+ 				(devinfo.u.device.Flags & DEVICE_FLAG_IN_ENCLOSURE) ? "E" : "",
+ 				devinfo.u.device.PathId+1,
+ 				devinfo.u.device.TargetId+1,
+-				devinfo.u.device.IdentifyData.ModelNumber, sn,
++				(char*)devinfo.u.device.IdentifyData.ModelNumber, sn,
+ 				(int)(devinfo.Capacity*512/1000000),
+ 				(devinfo.u.device.Flags & DEVICE_FLAG_DISABLED)? "Disabled" : "Normal",
+ 				devinfo.u.device.ReadAheadEnabled? "[RA]":"",
+@@ -233,15 +238,25 @@
+ }
+ 
+ #define MAX_PHYSICAL_DEVICE	128
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ int hpt_proc_get_info(struct Scsi_Host *host, char *buffer, char **start, off_t offset, int length)
++#else
++int hpt_proc_show_info(struct seq_file *m, struct Scsi_Host *host)
++#endif
+ {
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ 	HPT_GET_INFO info;
++#else
++#define info (*m)
++#define buffillen count ? 0 : 0
++#endif
+ 	int i, j, count;
+ 	CONTROLLER_INFO_V2 conInfo2;
+ 	DEVICEID *ids;
+ 	int devs;	
+ 	PVBUS_EXT vbus_ext = get_vbus_ext(host);
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ 	info.buffer     = buffer;
+ 	info.buflength  = length;
+ 	info.bufoffset  = offset;
+@@ -249,6 +264,7 @@
+ 	info.buffillen  = 0;
+ 
+ 	if (start) *start = buffer;
++#endif
+ 
+ 	hpt_copy_info(&info, "%s %s\n\n", driver_name_long, driver_ver);
+ 
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/install.sh rr222x-linux-src-v1.9/osm/linux/install.sh
+--- rr222x-linux-src-v1.9.orig/osm/linux/install.sh	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/install.sh	2013-09-29 18:19:39.145613127 +0200
+@@ -10,7 +10,7 @@
+ 	OBJ=o
+ 	MODVER=`modinfo -f%{kernel_version} ${PWD}/${TARGETNAME}.${OBJ}`
+ 	;;
+-	2.6 )
++	2.6 | 3.* )
+ 	OBJ=ko
+ 	MODVER=`modinfo -F vermagic ${PWD}/${TARGETNAME}.${OBJ} | cut -d' ' -f1`
+ 	;;
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/os_linux.c rr222x-linux-src-v1.9/osm/linux/os_linux.c
+--- rr222x-linux-src-v1.9.orig/osm/linux/os_linux.c	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/os_linux.c	2013-09-29 18:19:39.145613127 +0200
+@@ -198,7 +198,11 @@
+ 
+ 	if (page)
+ 		return (PageHighMem(page)?
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++				(char *)kmap_atomic(page) :
++#else
+ 				(char *)kmap_atomic(page, HPT_KMAP_TYPE) :
++#endif
+ 				(char *)page_address(page))
+ 			+ (psg->addr.bus & 0xffffffff);
+ 	else
+@@ -208,7 +212,11 @@
+ void os_kunmap_sgptr(void *ptr)
+ {
+ 	if ((HPT_UPTR)ptr >= (HPT_UPTR)high_memory)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++		kunmap_atomic(ptr);
++#else
+ 		kunmap_atomic(ptr, HPT_KMAP_TYPE);
++#endif
+ }
+ #else 
+ void *os_kmap_sgptr(PSG psg) { return psg->addr._logical; }
+@@ -259,7 +267,9 @@
+ 				for (minor=0; minor<=240; minor+=16) {
+ 					struct block_device *bdev = bdget(MKDEV(major[i], minor));
+ 					if (bdev &&
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38)
++						blkdev_get(bdev, FMODE_READ,NULL)
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+ 						blkdev_get(bdev, FMODE_READ)
+ #else 
+ 						blkdev_get(bdev, FMODE_READ, 0 __BDEV_RAW)
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/osm_linux.c rr222x-linux-src-v1.9/osm/linux/osm_linux.c
+--- rr222x-linux-src-v1.9.orig/osm/linux/osm_linux.c	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/osm_linux.c	2013-09-29 18:19:39.146613138 +0200
+@@ -447,7 +447,11 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+ 	struct scatterlist *sg;
+ 	sg = scsi_sglist(cmd);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++	*pbuf = kmap_atomic(HPT_SG_PAGE(sg)) + sg->offset;
++#else
+ 	*pbuf = kmap_atomic(HPT_SG_PAGE(sg), HPT_KMAP_TYPE) + sg->offset;
++#endif
+ 	buflen = sg->length;
+ #else 
+ 
+@@ -477,7 +481,11 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+ 	struct scatterlist *sg;
+ 	sg = scsi_sglist(cmd);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++	kunmap_atomic((char *)buf - sg->offset);
++#else
+ 	kunmap_atomic((char *)buf - sg->offset, HPT_KMAP_TYPE);
++#endif
+ #else 
+ 
+ 	if (cmd->use_sg) {
+@@ -875,7 +883,11 @@
+ 	}
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
+ static int hpt_queuecommand (Scsi_Cmnd * SCpnt, void (*done) (Scsi_Cmnd *))
++#else
++static int hpt_queuecommand_lck (Scsi_Cmnd * SCpnt, void (*done) (Scsi_Cmnd *))
++#endif
+ {
+ 	struct Scsi_Host *phost = sc_host(SCpnt);
+ 	PVBUS_EXT vbus_ext = get_vbus_ext(phost);
+@@ -1409,6 +1421,10 @@
+ 	return 0;
+ }
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37)
++static DEF_SCSI_QCMD(hpt_queuecommand)
++#endif
++
+ static int hpt_reset (Scsi_Cmnd *SCpnt)
+ {
+ 	PVBUS_EXT vbus_ext = get_vbus_ext(sc_host(SCpnt));
+@@ -1790,6 +1806,7 @@
+ 	return -EINVAL;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ static int hpt_proc_info26(struct Scsi_Host *host, char *buffer, char **start,
+ 					off_t offset, int length, int inout)
+ {
+@@ -1799,6 +1816,7 @@
+ 	else
+ 		return hpt_proc_get_info(host, buffer, start, offset, length);
+ }
++#endif
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+ static int hpt_proc_info24(char *buffer,char **start, off_t offset,
+@@ -2099,7 +2117,12 @@
+ 	#endif
+ #else /* 2.6.x */
+ 	proc_name:               driver_name,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ 	proc_info:               hpt_proc_info26,
++#else
++	show_info:               hpt_proc_show_info,
++	write_info:              hpt_proc_set_info,
++#endif
+ 	max_sectors:             128,
+ #endif
+ 	this_id:                 -1
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/osm_linux.h rr222x-linux-src-v1.9/osm/linux/osm_linux.h
+--- rr222x-linux-src-v1.9.orig/osm/linux/osm_linux.h	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/osm_linux.h	2013-09-29 18:19:39.146613138 +0200
+@@ -6,13 +6,15 @@
+ #ifndef _OSM_LINUX_H
+ #define _OSM_LINUX_H
+ 
++#include <linux/version.h>
++
+ /* system headers */
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38)
+ #ifndef AUTOCONF_INCLUDED
+ #include <linux/config.h>
+ #endif
+-
+-#include <linux/version.h>
++#endif
+ 
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)) && defined(MODVERSIONS)
+ #include <linux/modversions.h>
+@@ -173,7 +175,9 @@
+ #define scsi_set_max_cmd_len(host, len) host->max_cmd_len = len
+ #endif
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++#define HPT_FIND_PCI_DEVICE pci_get_device
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+ #define HPT_KMAP_TYPE KM_BIO_SRC_IRQ
+ #define HPT_FIND_PCI_DEVICE pci_get_device
+ #else 
+@@ -289,6 +293,9 @@
+ void refresh_sd_flags(PVBUS_EXT vbus_ext);
+ void hpt_do_ioctl(IOCTL_ARG *ioctl_args);
+ void hpt_stop_tasks(PVBUS_EXT vbus_ext);
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ int hpt_proc_get_info(struct Scsi_Host *host, char *buffer, char **start, off_t offset, int length);
+-
++#else
++int hpt_proc_show_info(struct seq_file *m, struct Scsi_Host *host);
++#endif
+ #endif
+diff -uraN rr222x-linux-src-v1.9.orig/osm/linux/patch.sh rr222x-linux-src-v1.9/osm/linux/patch.sh
+--- rr222x-linux-src-v1.9.orig/osm/linux/patch.sh	2009-09-24 08:45:09.000000000 +0200
++++ rr222x-linux-src-v1.9/osm/linux/patch.sh	2013-09-29 18:19:39.146613138 +0200
+@@ -143,7 +143,7 @@
+ 		fi
+ 	fi
+ 	;;
+-	2.6 )
++	2.6 | 3.* )
+ 	cd ${HPT_ROOT}/lib/linux/free-${ARCH}-regparm0
+ 	ld -r -o ${ARCH}-${TARGETNAME}.obj ${TARGETMODS}
+ 	mv ${ARCH}-${TARGETNAME}.obj $KERNELDIR/drivers/scsi/${TARGETNAME}/	

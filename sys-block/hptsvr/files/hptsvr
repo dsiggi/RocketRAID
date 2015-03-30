@@ -1,0 +1,17 @@
+#!/sbin/runscript
+
+depend() {
+	need net
+}
+
+start () {
+	ebegin "Starting hptsvr"
+	start-stop-daemon --start --exec /bin/hptsvr
+	eend $?
+}
+
+stop () {
+	ebegin "Stopping hptsvr"
+	start-stop-daemon --stop --exec /bin/hptsvr 
+	eend $?
+}
