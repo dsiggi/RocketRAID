@@ -3,8 +3,8 @@
 	<overlay
 		contact = "daniel.siegmanski@gmail.com"
 		name = "HPT RocketRaid"
-		src = "rsync://dsiggi.homenet.org/RocketRAID"
-		type = "rsync"
+		src = "git://github.com/dsiggi/RocketRAID"
+		type = "git"
 		status = "unofficial"
 		<link>
 		</link>
