@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <layman>
-	<overlay
+	<overlay>
 		contact = "daniel.siegmanski@gmail.com"
 		name = "HPT RocketRaid"
 		src = "git://github.com/dsiggi/RocketRAID"
