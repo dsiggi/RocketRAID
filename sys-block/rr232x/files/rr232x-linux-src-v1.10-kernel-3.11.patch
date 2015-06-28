@@ -1,7 +1,7 @@
 diff -ruaN rr232x-linux-src-v1.10.orig/inc/linux/Makefile.def rr232x-linux-src-v1.10/inc/linux/Makefile.def
 --- rr232x-linux-src-v1.10.orig/inc/linux/Makefile.def	2009-07-16 03:28:28.000000000 +0200
 +++ rr232x-linux-src-v1.10/inc/linux/Makefile.def	2013-09-29 19:18:17.789201278 +0200
-@@ -74,19 +74,31 @@
+@@ -74,19 +74,32 @@
  KERNELDIR := /lib/modules/$(shell uname -r)/build
  endif
  
