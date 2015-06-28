@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<layman>
+	<overlay
+		contact = "daniel.siegmanski@gmail.com"
+		name = "HPT RocketRaid"
+		src = "rsync://dsiggi.homenet.org/RocketRAID"
+		type = "rsync"
+		status = "unofficial"
+		<link>
+		</link>
+		<description>
+			Kernel mdules for many RocketRaid cards and the client and server software.
+		</description>
+	</overlay>
+</layman>
