@@ -26,7 +26,8 @@ diff -ruaN rr232x-linux-src-v1.10.orig/inc/linux/Makefile.def rr232x-linux-src-v
  ifneq ($(KERNEL_VER), 2.6)
  ifneq ($(KERNEL_VER), 2.4)
 -$(error Only kernel 2.4/2.6 is supported but you use $(KERNEL_VER))
-+$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x/4.x is supported but you use $(KERNEL_VER))
++endif
 +endif
  endif
  endif
