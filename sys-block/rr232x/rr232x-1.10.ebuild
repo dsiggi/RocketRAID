@@ -18,6 +18,8 @@ KEYWORDS="amd64 x86"
 S=${WORKDIR}
 MY_S="${S}/rr232x-linux-src-v1.10"
 
+DEPEND="app-text/dos2unix"
+
 BUILD_TARGETS=""
 BUILD_TARGET_ARCH="${ARCH}"
 MODULE_NAMES="rr232x(block:${MY_S}/product/rr232x/linux:${MY_S}/product/rr232x/linux)"
@@ -25,6 +27,7 @@ MODULE_NAMES="rr232x(block:${MY_S}/product/rr232x/linux:${MY_S}/product/rr232x/l
 src_unpack() {
 	unpack ${A}
 	cd "${MY_S}"
+	dos2unix -ascii inc/linux/Makefile.def
 	epatch "${FILESDIR}"/rr232x-linux-src-v1.10-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"
