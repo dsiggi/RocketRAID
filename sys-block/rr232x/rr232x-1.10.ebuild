@@ -15,10 +15,10 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="amd64 x86"
 
+DEPEND="app-text/dos2unix"
+
 S=${WORKDIR}
 MY_S="${S}/rr232x-linux-src-v1.10"
-
-DEPEND="app-text/dos2unix"
 
 BUILD_TARGETS=""
 BUILD_TARGET_ARCH="${ARCH}"

@@ -1,7 +1,7 @@
 diff -uraN rr174x-linux-src-v2.4.orig/inc/linux/Makefile.def rr174x-linux-src-v2.4/inc/linux/Makefile.def
 --- rr174x-linux-src-v2.4.orig/inc/linux/Makefile.def	2009-10-09 08:34:40.000000000 +0200
 +++ rr174x-linux-src-v2.4/inc/linux/Makefile.def	2013-09-29 18:05:42.558316282 +0200
-@@ -74,19 +74,30 @@
+@@ -74,19 +74,32 @@
  KERNELDIR := /lib/modules/$(shell uname -r)/build
  endif
  
@@ -22,10 +22,12 @@ diff -uraN rr174x-linux-src-v2.4.orig/inc/linux/Makefile.def rr174x-linux-src-v2
  endif
  
 +ifneq ($(MAJOR), 3)
++ifneq ($(MAJOR), 4)
  ifneq ($(KERNEL_VER), 2.6)
  ifneq ($(KERNEL_VER), 2.4)
 -$(error Only kernel 2.4/2.6 is supported but you use $(KERNEL_VER))
-+$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x/4.x is supported but you use $(KERNEL_VER))
++endif
 +endif
  endif
  endif

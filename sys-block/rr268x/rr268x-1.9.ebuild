@@ -15,6 +15,8 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="amd64 x86"
 
+DEPEND="app-text/dos2unix"
+
 S=${WORKDIR}
 MY_S="${S}/rr268x-linux-src-v1.9"
 
@@ -25,6 +27,7 @@ MODULE_NAMES="rr2680(block:${MY_S}/product/rr2680/linux:${MY_S}/product/rr2680/l
 src_unpack() {
 	unpack ${A}
 	cd "${MY_S}"
+	dos2unix -ascii inc/linux/Makefile.def
 	epatch "${FILESDIR}"/rr268x-linux-src-v1.9-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"

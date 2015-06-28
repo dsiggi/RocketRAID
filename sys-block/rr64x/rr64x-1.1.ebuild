@@ -15,6 +15,8 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="amd64 x86"
 
+DEPEND="app-text/dos2unix"
+
 S=${WORKDIR}
 MY_S="${S}/rr64x-linux-src-v1.1"
 
@@ -25,6 +27,7 @@ MODULE_NAMES="rr64x(block:${MY_S}/product/rr64x/linux:${MY_S}/product/rr64x/linu
 src_unpack() {
 	unpack ${A}
 	cd "${MY_S}"
+	dos2unix -ascii inc/linux/Makefile.def
 	epatch "${FILESDIR}"/rr64x-linux-src-v1.1-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"

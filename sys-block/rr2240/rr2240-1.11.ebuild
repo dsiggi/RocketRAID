@@ -16,6 +16,7 @@ SLOT="0"
 KEYWORDS="amd64 x86"
 
 RDEPEND="!sys-block/rr222x"
+DEPEND="app-text/dos2unix"
 
 S=${WORKDIR}
 MY_S="${S}/rr2240-linux-src-v1.11"
@@ -27,6 +28,7 @@ MODULE_NAMES="hptmv6(block:${MY_S}/product/rr2240/linux:${MY_S}/product/rr2240/l
 src_unpack() {
 	unpack ${A}
 	cd "${MY_S}"
+	dos2unix -ascii inc/linux/Makefile.def
 	epatch "${FILESDIR}"/rr2240-linux-src-v1.11-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"
