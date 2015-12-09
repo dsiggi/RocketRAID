@@ -36,6 +36,8 @@ src_unpack() {
 
 src_compile() {
 	cd ${MY_S}/product/rr2220/linux
+	sed -i 's/(" __DATE__ " " __TIME__ ")/ /' config.c
+        sed -i "s/v1.10/v1.10 $(date +%Y%m%d) $(date +%H%M%S)/" config.c
 	emake || die
 }
 
