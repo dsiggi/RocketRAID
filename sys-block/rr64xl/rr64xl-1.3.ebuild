@@ -27,7 +27,7 @@ MODULE_NAMES="rr64xl(block:${MY_S}/product/rr64xl/linux:${MY_S}/product/rr64xl/l
 src_unpack() {
 	unpack ${A}
 	cd "${MY_S}"
-	dos2unix -ascii inc/linux/Makefile.def
+	dos2unix -ascii inc/linux_32mpa/Makefile.def
 	epatch "${FILESDIR}"/rr64xl-linux-src-v1.3-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"
@@ -35,6 +35,8 @@ src_unpack() {
 
 src_compile() {
 	cd ${MY_S}/product/rr64xl/linux
+	sed -i 's/(" __DATE__ " " __TIME__ ")/ /' config.c
+        sed -i "s/v1.10/v1.10 $(date +%Y%m%d) $(date +%H%M%S)/" config.c
 	emake || die
 }
 

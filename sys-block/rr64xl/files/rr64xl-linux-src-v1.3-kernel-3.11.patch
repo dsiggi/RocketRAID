@@ -1,6 +1,20 @@
 diff -uraN rr64xl-linux-src-v1.3.orig/inc/linux_32mpa/Makefile.def rr64xl-linux-src-v1.3/inc/linux_32mpa/Makefile.def
 --- rr64xl-linux-src-v1.3.orig/inc/linux_32mpa/Makefile.def	2013-03-24 19:07:34.000000000 +0100
 +++ rr64xl-linux-src-v1.3/inc/linux_32mpa/Makefile.def	2013-09-29 19:38:57.946570350 +0200
+@@ -89,10 +89,12 @@ ifeq ($(KERNEL_VER),)
+ $(error Cannot find kernel version. Check $(KERNELDIR)/include/linux/version.h.)
+ endif
+ 
++ifneq ($(MAJOR), 4)
+ ifneq ($(MAJOR), 3)
+ ifneq ($(KERNEL_VER), 2.6)
+ ifneq ($(KERNEL_VER), 2.4)
+-$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x/4.x is supported but you use $(KERNEL_VER))
++endif
+ endif
+ endif
+ endif
 @@ -159,8 +159,8 @@
  # export variables used by the scripts.
  export HPT_ROOT TARGETNAME TARGETMODS TARGETOBJS KERNELDIR C_DEFINE KERNEL_VER
