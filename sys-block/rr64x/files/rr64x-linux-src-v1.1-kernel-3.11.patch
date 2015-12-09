@@ -19,6 +19,21 @@ diff -uraN rr64x-linux-src-v1.1.orig/inc/linux/Makefile.def rr64x-linux-src-v1.1
  KERNEL_VER := $(MAJOR).$(MINOR)
  
  ifeq ($(KERNEL_VER),)
+@@ -89,10 +89,12 @@ ifeq ($(KERNEL_VER),)
+ $(error Cannot find kernel version. Check $(KERNELDIR)/include/linux/version.h.)
+ endif
+ 
++ifneq ($(MAJOR), 4)
+ ifneq ($(MAJOR), 3)
+ ifneq ($(KERNEL_VER), 2.6)
+ ifneq ($(KERNEL_VER), 2.4)
+-$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x/4.x is supported but you use $(KERNEL_VER))
++endif
+ endif
+ endif
+ endif
+
 @@ -153,8 +160,8 @@
  # export variables used by the scripts.
  export HPT_ROOT TARGETNAME TARGETMODS TARGETOBJS KERNELDIR C_DEFINE KERNEL_VER
