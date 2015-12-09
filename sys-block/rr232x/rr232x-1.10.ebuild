@@ -35,6 +35,10 @@ src_unpack() {
 
 src_compile() {
 	cd ${MY_S}/product/rr232x/linux
+	sed -i 's/(" __DATE__ " " __TIME__ ")/ /' config.c
+	sed -i "s/v1.10/v1.10 $(date +%Y%m%d) $(date +%H%M%S)/" config.c
+	#append-cflags doesn't work
+	#append-cflags -Wno-error=date-time
 	emake || die
 	#fperms 444 rr232x.ko
 	chmod 444 ${MY_S}/product/rr232x/linux/rr232x.ko
