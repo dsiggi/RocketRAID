@@ -1,26 +1,9 @@
-<<<<<<< HEAD
-<?xml version="1.0" ?>
-<layman>
-	<overlay
-		contact = "daniel.siegmanski@gmail.com"
-		name = "HPT RocketRaid"
-		src = "rsync://dsiggi.homenet.org/RocketRAID"
-		type = "rsync"
-		status = "unofficial"
-		<link>
-		</link>
-		<description>
-			Kernel mdules for many RocketRaid cards and the client and server software.
-		</description>
-	</overlay>
-</layman>
-=======
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE repositories SYSTEM "/dtd/repositories.dtd">
 <repositories xmlns="" version="1.0">
   <repo quality="experimental" status="unofficial">
     <name>RocketRAID</name>
-    <description lang="en">Kernel mdules for many RocketRaid cards and the client and server software.</description>
+    <description lang="en">Kernel modules for many RocketRaid cards and the client and server software.</description>
     <owner type="person">
       <email></email>
       <name>dsiggi</name>
@@ -29,4 +12,4 @@
     type="git">git://github.com/dsiggi/RocketRAID</source>
    </repo>
 </repositories>
->>>>>>> 6e75b15a3da3adfe67d6b87b029e24990f39189a
+
