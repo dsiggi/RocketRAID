@@ -1,7 +1,7 @@
 diff -uraN rr2644-linux-src-v1.7.orig/inc/linux_32mpa/Makefile.def rr2644-linux-src-v1.7/inc/linux_32mpa/Makefile.def
 --- rr2644-linux-src-v1.7.orig/inc/linux_32mpa/Makefile.def	2012-07-19 10:49:02.000000000 +0200
 +++ rr2644-linux-src-v1.7/inc/linux_32mpa/Makefile.def	2013-09-29 18:45:51.097404895 +0200
-@@ -73,8 +73,15 @@
+@@ -73,18 +73,27 @@ ifndef KERNELDIR
  KERNELDIR := /lib/modules/$(shell uname -r)/build
  endif
  
@@ -19,6 +19,20 @@ diff -uraN rr2644-linux-src-v1.7.orig/inc/linux_32mpa/Makefile.def rr2644-linux-
  KERNEL_VER := $(MAJOR).$(MINOR)
  
  ifeq ($(KERNEL_VER),)
+ $(error Cannot find kernel version. Check $(KERNELDIR)/include/linux/version.h.)
+ endif
+ 
++ifneq ($(MAJOR), 4)
+ ifneq ($(MAJOR), 3)
+ ifneq ($(KERNEL_VER), 2.6)
+ ifneq ($(KERNEL_VER), 2.4)
+-$(error Only kernel 2.4/2.6/3.x is supported but you use $(KERNEL_VER))
++$(error Only kernel 2.4/2.6/3.x/4.x is supported but you use $(KERNEL_VER))
++endif
+ endif
+ endif
+ endif
+
 @@ -152,8 +159,8 @@
  # export variables used by the scripts.
  export HPT_ROOT TARGETNAME TARGETMODS TARGETOBJS KERNELDIR C_DEFINE KERNEL_VER
