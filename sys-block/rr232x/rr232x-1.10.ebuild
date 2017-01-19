@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
@@ -15,7 +15,7 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="amd64 x86"
 
-DEPEND="app-text/dos2unix"
+DEPEND=""
 
 S=${WORKDIR}
 MY_S="${S}/rr232x-linux-src-v1.10"
@@ -26,26 +26,21 @@ MODULE_NAMES="rr232x(block:${MY_S}/product/rr232x/linux:${MY_S}/product/rr232x/l
 
 src_unpack() {
 	unpack ${A}
-	cd "${MY_S}"
-	dos2unix -ascii inc/linux/Makefile.def
-	epatch "${FILESDIR}"/rr232x-linux-src-v1.10-kernel-3.11.patch
 	linux-mod_pkg_setup
 	BUILD_PARMS="KERN_DIR=${KV_DIR} KERNOUT=${KV_OUT_DIR}"
 }
 
+src_prepare() {
+	cd "${MY_S}"
+	epatch "${FILESDIR}"/rr232x-kernel-4-x.patch
+}
+
 src_compile() {
 	cd ${MY_S}/product/rr232x/linux
-	sed -i 's/(" __DATE__ " " __TIME__ ")/ /' config.c
-	sed -i "s/v1.10/v1.10 $(date +%Y%m%d) $(date +%H%M%S)/" config.c
-	#append-cflags doesn't work
-	#append-cflags -Wno-error=date-time
 	emake || die
-	#fperms 444 rr232x.ko
-	chmod 444 ${MY_S}/product/rr232x/linux/rr232x.ko
 }
 
 src_install() {
-	#fperms 444 ${MY_S}/product/rr232x/linux/rr232x.ko
 	linux-mod_src_install
 }
 
