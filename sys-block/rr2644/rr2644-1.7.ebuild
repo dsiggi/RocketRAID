@@ -7,7 +7,8 @@ EAPI=5
 inherit eutils linux-mod
 
 MY_P=RR2644-Linux-Src-v${PV}-120817-1640
-DESCRIPTION="Kernel Module for the HighPoint RocketRaid 2644 RAID Adapter"
+DESCRIPTION="Kernel Module for the HighPoint RocketRaid 2644 RAID 
+Adapter"
 HOMEPAGE="http://www.highpoint-tech.com"
 SRC_URI="http://www.highpoint-tech.com/BIOS_Driver/rr26xx/2644/linux/v1.7.12.0823/${MY_P}.tar.gz"
 
@@ -49,3 +50,4 @@ pkg_postinst() {
 	elog "Please add \"rr2644\" to:"
 	elog "/etc/conf.d/modules"
 }
+ 
