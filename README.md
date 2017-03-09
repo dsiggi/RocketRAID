@@ -8,6 +8,7 @@ At the moment the following drivers are working with kernel >=4.7:
 - rr62x
 - rr64x
 - rr64xl
+- rr172x
 - rr231x
 - rr232x
 - rr2340
