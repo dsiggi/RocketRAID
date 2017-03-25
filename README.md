@@ -14,5 +14,6 @@ At the moment the following drivers are working with kernel >=4.7:
 - rr231x
 - rr232x
 - rr2340
+- rr264x
 
 The other drivers I will uppdate soon.
