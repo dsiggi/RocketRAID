@@ -1,0 +1,10 @@
+--- product/rr62x/linux/config.c	2012-05-31 22:55:35.000000000 -0700
++++ product/rr62x/linux/config.c	2018-01-28 15:07:37.120419777 -0800
+@@ -32,6 +32,7 @@
+ static const struct pci_device_id hpt_pci_tbl[] = {
+ 	{PCI_DEVICE(0x1103, 0x0620), 0, 0, 0},
+ 	{PCI_DEVICE(0x1103, 0x0622), 0, 0, 0},
++	{PCI_DEVICE(0x1b4b, 0x0622), 0, 0, 0},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(pci, hpt_pci_tbl);
