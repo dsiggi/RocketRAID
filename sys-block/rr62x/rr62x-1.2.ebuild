@@ -34,6 +34,7 @@ src_unpack() {
 src_prepare() {
 	cd "${MY_S}"
 	epatch "${FILESDIR}"/rr62x-kernel-4-x.patch
+	epatch "${FILESDIR}"/missing-device-ID.patch
 }
 
 src_compile() {
