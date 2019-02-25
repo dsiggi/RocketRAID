@@ -1,8 +1,14 @@
 # RocketRAID
-RocketRAID
+
+#### Disclaimer
+```
+I am not responsible for any damage you made to your device or data.
+You have been warned.
+```
+
 Infos: https://wiki.gentoo.org/wiki/HighPoint_RocketRAID
 
-At the moment I try to get the "<drivername>-kernel-4-x" patch working with all drivers. 
+At the moment I try to get the "<drivername>-kernel-4-x" patch working with all drivers.
 
 At the moment the following drivers are working with kernel >=4.7:
 - rr62x
@@ -16,5 +22,3 @@ At the moment the following drivers are working with kernel >=4.7:
 - rr2340
 - rr264x
 - rr268x
-
-The other drivers I will uppdate soon.
