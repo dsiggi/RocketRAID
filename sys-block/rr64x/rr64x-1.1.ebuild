@@ -31,6 +31,7 @@ src_unpack() {
 src_prepare() {
 	cd ${S}
 	epatch "${FILESDIR}"/rr64x-kernel-4-x.patch
+	epatch "${FILESDIR}"/rr64x-timer.patch
 }
 
 src_compile() {
