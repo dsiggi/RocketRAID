@@ -33,6 +33,7 @@ src_unpack() {
 src_prepare() {
 	cd "${MY_S}"
 	epatch "${FILESDIR}"/rr2340-kernel-4-x.patch
+	epatch "${FILESDIR}"/rr2340-timer.patch
 	eapply_user
 }
 
