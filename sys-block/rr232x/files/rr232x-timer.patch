@@ -175,18 +175,15 @@ diff -pur rr232x-linux-src-v1.10.orig/osm/linux/osm_linux.c rr232x-linux-src-v1.
  	}
  
  	spin_lock_irqsave(vbus_ext->lock, flags);
-@@ -2248,6 +2248,14 @@ module_exit(exit_this_scsi_driver);
+@@ -2199,6 +2248,10 @@ module_exit(exit_this_scsi_driver);
  
  #endif
  
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,10)
 +#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 15, 0)
- #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,10)
-+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 +/* FIXME: Not sure I am allowed to make this change. Keeping it for testing purposes.
 + * Without this change we have a problem with missing symbols, for instance, sev_enable_key */
 +MODULE_LICENSE("GPL");
 +#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 10)
  MODULE_LICENSE("Proprietary");
  #endif
-+#endif
-+
