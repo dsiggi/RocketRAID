@@ -34,6 +34,7 @@ src_prepare() {
 	cd "${MY_S}"
 	epatch "${FILESDIR}"/rr232x-kernel-4-x.patch
 	epatch "${FILESDIR}"/rr232x-timer.patch
+	epatch "${FILESDIR}"/rr232x-new_scsi.patch
 }
 
 src_compile() {
