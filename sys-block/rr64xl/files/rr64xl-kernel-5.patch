@@ -1,0 +1,1628 @@
+diff -u -r rr64xl-linux-src-v1.4.0/inc/linux_32mpa/Makefile.def rr64xl-linux-src-v1.4.0/inc/linux_32mpa/Makefile.def
+--- rr64xl-linux-src-v1.4.0/inc/linux_32mpa/Makefile.def	2016-09-19 11:40:55.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/inc/linux_32mpa/Makefile.def	2019-06-12 17:47:04.845559000 -0700
+@@ -3,6 +3,7 @@
+ # Copyright (C) 2004-2005 HighPoint Technologies, Inc. All Rights Reserved.
+ # History:
+ #   2004-12-14 gmm initial code
++#   2019-06-04 rh minor updates for 5.0 build compatibility
+ #
+ # Make options:
+ #
+@@ -92,6 +93,7 @@
+ $(error Cannot find kernel version. Check $(KERNELDIR)/include/linux/version.h.)
+ endif
+ 
++ifneq ($(MAJOR), 5)
+ ifneq ($(MAJOR), 4)
+ ifneq ($(MAJOR), 3)
+ ifneq ($(KERNEL_VER), 2.6)
+@@ -100,6 +102,7 @@
+ endif
+ endif
+ endif
++endif
+ endif
+ 
+ ifneq ($(KERNEL_VER), 2.4)
+diff -u -r rr64xl-linux-src-v1.4.0/osm/linux/hptinfo.c rr64xl-linux-src-v1.4.0/osm/linux/hptinfo.c
+--- rr64xl-linux-src-v1.4.0/osm/linux/hptinfo.c	2016-09-19 11:40:56.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/osm/linux/hptinfo.c	2019-06-12 17:43:43.352795000 -0700
+@@ -1,4 +1,4 @@
+-/* $Id: hptinfo.c,v 1.24 2008/09/05 03:30:17 xxj Exp $
++/* $Id: hptinfo.c, v1.5.0 2019/06/03 00:00:00 Exp $
+  *
+  * HighPoint RAID Driver for Linux
+  * Copyright (C) 2005 HighPoint Technologies, Inc. All Rights Reserved.
+diff -u -r rr64xl-linux-src-v1.4.0/osm/linux/install.sh rr64xl-linux-src-v1.4.0/osm/linux/install.sh
+--- rr64xl-linux-src-v1.4.0/osm/linux/install.sh	2016-09-19 11:40:56.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/osm/linux/install.sh	2019-06-06 03:48:46.000000000 -0700
+@@ -10,7 +10,7 @@
+ 	OBJ=o
+ 	MODVER=`modinfo -f%{kernel_version} ${PWD}/${TARGETNAME}.${OBJ}`
+ 	;;
+-	2.6 | 3.* | 4.* )
++	2.6 | 3.* | 4.* | 5.* )
+ 	OBJ=ko
+ 	MODVER=`modinfo -F vermagic ${PWD}/${TARGETNAME}.${OBJ} | cut -d' ' -f1`
+ 	;;
+diff -u -r rr64xl-linux-src-v1.4.0/osm/linux/os_linux.c rr64xl-linux-src-v1.4.0/osm/linux/os_linux.c
+--- rr64xl-linux-src-v1.4.0/osm/linux/os_linux.c	2016-09-19 11:40:56.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/osm/linux/os_linux.c	2019-06-12 17:43:21.773034000 -0700
+@@ -1,7 +1,10 @@
+-/* $Id: os_linux.c,v 1.36 2010/06/01 01:42:36 lcn Exp $
++/* $Id: os_linux.c, v1.5.0 2019/06/03 00:00:00 lcn Exp $
+  *
+  * HighPoint RAID Driver for Linux
+  * Copyright (C) 2005 HighPoint Technologies, Inc. All Rights Reserved.
++ * -- all updates for linux 5.0+ should be complete
++ *	- removed timer_list data field
++ *	- now uses timer_setup, mod_timer
+  */
+ #include "osm_linux.h"
+ 
+@@ -13,7 +16,7 @@
+ void  os_outb (void *port, HPT_U8 value) { outb(value, (unsigned)(HPT_UPTR)port); }
+ void  os_outw (void *port, HPT_U16 value) { outw(value, (unsigned)(HPT_UPTR)port); }
+ void  os_outl (void *port, HPT_U32 value) { outl(value, (unsigned)(HPT_UPTR)port); }
+-void  os_insw (void *port, HPT_U16 *buffer, HPT_U32 count) 
++void  os_insw (void *port, HPT_U16 *buffer, HPT_U32 count)
+ { insw((unsigned)(HPT_UPTR)port, (void *)buffer, count); }
+ void  os_outsw(void *port, HPT_U16 *buffer, HPT_U32 count)
+ { outsw((unsigned)(HPT_UPTR)port, (void *)buffer, count); }
+@@ -27,7 +30,7 @@
+ 
+ /* PCI configuration space */
+ HPT_U8 os_pci_readb (void *osext, HPT_U8 offset)
+-{ 
++{
+ 	HPT_U8 value;
+ 
+ 	if (pci_read_config_byte(((PHBA)osext)->pcidev, offset, &value))
+@@ -36,8 +39,8 @@
+ 		return value;
+ }
+ 
+-HPT_U16 os_pci_readw (void *osext, HPT_U8 offset) 
+-{ 
++HPT_U16 os_pci_readw (void *osext, HPT_U8 offset)
++{
+ 	HPT_U16 value;
+ 
+ 	if (pci_read_config_word(((PHBA)osext)->pcidev, offset, &value))
+@@ -46,7 +49,7 @@
+ 		return value;
+ }
+ 
+-HPT_U32 os_pci_readl (void *osext, HPT_U8 offset) 
++HPT_U32 os_pci_readl (void *osext, HPT_U8 offset)
+ {
+ 	HPT_U32 value;
+ 
+@@ -56,7 +59,7 @@
+ 		return value;
+ }
+ 
+-void os_pci_writeb(void *osext, HPT_U8 offset, HPT_U8 value) 
++void os_pci_writeb(void *osext, HPT_U8 offset, HPT_U8 value)
+ {
+ 	pci_write_config_byte(((PHBA)osext)->pcidev, offset, value);
+ }
+@@ -66,7 +69,7 @@
+ 	pci_write_config_word(((PHBA)osext)->pcidev, offset, value);
+ }
+ 
+-void os_pci_writel(void *osext, HPT_U8 offset, HPT_U32 value) 
++void os_pci_writel(void *osext, HPT_U8 offset, HPT_U32 value)
+ {
+ 	pci_write_config_dword(((PHBA)osext)->pcidev, offset, value);
+ }
+@@ -84,8 +87,8 @@
+ }
+ 
+ void *os_map_pci_bar(
+-	void *osext, 
+-	int index,   
++	void *osext,
++	int index,
+ 	HPT_U32 offset,
+ 	HPT_U32 length
+ )
+@@ -126,9 +129,9 @@
+ 	list->size = size;
+ 	list->head = 0;
+ #if DBG
+-	list->reserved_count = 
++	list->reserved_count =
+ #endif
+-	list->count = count;	
++	list->count = count;
+ }
+ 
+ void *freelist_get(struct freelist *list)
+@@ -167,7 +170,7 @@
+ 	list->size = size;
+ 	list->head = 0;
+ #if DBG
+-	list->reserved_count = 
++	list->reserved_count =
+ #endif
+ 	list->count = count;
+ }
+@@ -205,7 +208,7 @@
+ 		return (PageHighMem(page)?
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+ 				(char *)kmap_atomic(page) :
+-#else 
++#else
+ 				(char *)kmap_atomic(page, HPT_KMAP_TYPE) :
+ #endif
+ 				(char *)page_address(page))
+@@ -219,11 +222,11 @@
+ 	if ((HPT_UPTR)ptr >= (HPT_UPTR)high_memory)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+ 		kunmap_atomic(ptr);
+-#else 
++#else
+ 		kunmap_atomic(ptr, HPT_KMAP_TYPE);
+ #endif
+ }
+-#else 
++#else
+ void *os_kmap_sgptr(PSG psg) { return psg->addr._logical; }
+ void os_kunmap_sgptr(void *ptr) {}
+ #endif
+@@ -329,27 +332,27 @@
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,4)
+ #define __BDEV_RAW
+-#else 
++#else
+ #define __BDEV_RAW , BDEV_RAW
+ #endif
+ 
+ void refresh_sd_flags(PVBUS_EXT vbus_ext)
+ {
+-	static int major[] = { SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR, 
+-				SCSI_DISK4_MAJOR, SCSI_DISK5_MAJOR, SCSI_DISK6_MAJOR, SCSI_DISK7_MAJOR, 
+-				SCSI_DISK8_MAJOR, SCSI_DISK9_MAJOR, SCSI_DISK10_MAJOR, SCSI_DISK11_MAJOR, 
++	static int major[] = { SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR,
++				SCSI_DISK4_MAJOR, SCSI_DISK5_MAJOR, SCSI_DISK6_MAJOR, SCSI_DISK7_MAJOR,
++				SCSI_DISK8_MAJOR, SCSI_DISK9_MAJOR, SCSI_DISK10_MAJOR, SCSI_DISK11_MAJOR,
+ 				SCSI_DISK12_MAJOR, SCSI_DISK13_MAJOR, SCSI_DISK14_MAJOR, SCSI_DISK15_MAJOR, 0 };
+ 	int id;
+ 	Scsi_Device *SDptr;
+ 
+ 	vbus_ext->needs_refresh = 0;
+-	
++
+ 	for (id=0; id<osm_max_targets; id++) {
+-		
++
+ 		SDptr = scsi_device_lookup(vbus_ext->host, 0, id, 0);
+-		
++
+ 		vbus_ext->sd_flags[id] &= ~SD_FLAG_IN_USE;
+-	
++
+ 		if (SDptr) {
+ 			int i, minor;
+ 			for (i=0; major[i]; i++) {
+@@ -360,31 +363,32 @@
+ 						blkdev_get(bdev, FMODE_READ,NULL)
+ #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+ 						blkdev_get(bdev, FMODE_READ)
+-#else 
++#else
+ 						blkdev_get(bdev, FMODE_READ, 0 __BDEV_RAW)
+ #endif
+ 						==0) {
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)
++                        if (bdev->bd_disk && ((disk_to_dev(bdev->bd_disk)->parent)==&SDptr->sdev_gendev)) {
++#else
++
+ 						if (bdev->bd_disk && bdev->bd_disk->driverfs_dev==&SDptr->sdev_gendev) {
++#endif
+ 							if (vbus_ext->sd_flags[id] & SD_FLAG_REVALIDATE) {
+ 								if (bdev->bd_disk->fops->revalidate_disk)
+ 									bdev->bd_disk->fops->revalidate_disk(bdev->bd_disk);
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+-								inode_lock(bdev->bd_inode);
+-#else 
++				                inode_lock(bdev->bd_inode);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
+ 								mutex_lock(&bdev->bd_inode->i_mutex);
+-#endif
+-#else 
++#else
+ 								down(&bdev->bd_inode->i_sem);
+ #endif
+ 								i_size_write(bdev->bd_inode, (loff_t)get_capacity(bdev->bd_disk)<<9);
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+-								inode_unlock(bdev->bd_inode);
+-#else 
++                                				inode_unlock(bdev->bd_inode);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,15)
+ 								mutex_unlock(&bdev->bd_inode->i_mutex);
+-#endif
+-#else 
++#else
+ 								up(&bdev->bd_inode->i_sem);
+ #endif
+ 								vbus_ext->sd_flags[id] &= ~SD_FLAG_REVALIDATE;
+@@ -393,14 +397,14 @@
+ 								vbus_ext->sd_flags[id] |= SD_FLAG_IN_USE;
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+ 							blkdev_put(bdev, FMODE_READ);
+-#else 
++#else
+ 							blkdev_put(bdev __BDEV_RAW);
+ #endif
+ 							goto next;
+ 						}
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,28)
+ 						blkdev_put(bdev, FMODE_READ);
+-#else 
++#else
+ 						blkdev_put(bdev __BDEV_RAW);
+ #endif
+ 					}
+@@ -430,7 +434,7 @@
+ {
+ 	struct scsi_device *sdev;
+ 	struct sd_change_wrapper *change = container_of(work, struct sd_change_wrapper, work);
+-	
++
+ 	if (change->to_register) {
+ 		void *ptr = (void *)(HPT_UPTR)scsi_add_device(change->host, 0, change->id, 0);
+ 		if (ptr && IS_ERR(ptr))
+@@ -440,7 +444,7 @@
+ 		sdev = scsi_device_lookup(change->host, 0, change->id, 0);
+ 		if (sdev != NULL) {
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 23)
+-			
++
+ 			scsi_device_cancel(sdev, 0);
+ #endif
+ 			scsi_remove_device(sdev);
+@@ -461,10 +465,10 @@
+ 		os_printk("sd_change mem alloc failed");
+ 		return;
+ 	}
+-	
++
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 20)
+ 	INIT_WORK(&sd_change->work, (void (*)(void *))os_sd_changed, &sd_change->work);
+-#else 
++#else
+ 	INIT_WORK(&sd_change->work, os_sd_changed);
+ #endif
+ 
+@@ -508,7 +512,7 @@
+ 	mm_segment_t oldfs;
+ 	char cmd[64];
+ 	int result = -1;
+-	
++
+ 	pde = host->hostt->proc_dir;
+ 	if (pde) pde = pde->parent;
+ 	if (pde) pde = pde->subdir;
+@@ -531,12 +535,12 @@
+ 
+ void refresh_sd_flags(PVBUS_EXT vbus_ext)
+ {
+-	static int major[] = { SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR, 
++	static int major[] = { SCSI_DISK0_MAJOR, SCSI_DISK1_MAJOR, SCSI_DISK2_MAJOR, SCSI_DISK3_MAJOR,
+ 				SCSI_DISK4_MAJOR, SCSI_DISK5_MAJOR, SCSI_DISK6_MAJOR, SCSI_DISK7_MAJOR, 0 };
+ 	int i, minor;
+ 
+ 	vbus_ext->needs_refresh = 0;
+-	
++
+ 	for (i=0; i<osm_max_targets; i++) {
+ 		if (vbus_ext->sd_flags[i] & SD_FLAG_REMOVE) {
+ 			vbus_ext->sd_flags[i] &= ~SD_FLAG_REMOVE;
+@@ -571,7 +575,7 @@
+ {
+ 	PVBUS_EXT vbus_ext = osext;
+ 	Scsi_Device *SDptr = vbus_ext->host->host_queue;
+-	
++
+ 	while (SDptr) {
+ 		if (SDptr->id == id)
+ 			return SDptr->access_count;
+@@ -607,9 +611,9 @@
+ void os_schedule_task(void *osext, OSM_TASK *task)
+ {
+ 	PVBUS_EXT vbus_ext = osext;
+-	
++
+ 	HPT_ASSERT(task->next==0);
+-	
++
+ 	if (vbus_ext->tasks==0)
+ 		vbus_ext->tasks = task;
+ 	else {
+@@ -617,7 +621,7 @@
+ 		while (t->next) t = t->next;
+ 		t->next = task;
+ 	}
+-	
++
+ 	if (vbus_ext->worker.func)
+ 		tasklet_schedule(&vbus_ext->worker);
+ }
+@@ -629,27 +633,47 @@
+ 	return ((PVBUS_EXT)osext)->host->host_no;
+ }
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+ static void os_timer_for_ldm(unsigned long data)
+ {
+ 	PVBUS_EXT vbus_ext = (PVBUS_EXT)data;
+-	unsigned long flags;
++	unsigned long flags=0;
++
++	spin_lock_irqsave(vbus_ext->lock, flags);
++	ldm_on_timer((PVBUS)vbus_ext->vbus);
++	spin_unlock_irqrestore(vbus_ext->lock, flags);
++}
++#else
++// from_timer() is a macro that invokes container_of()
++static void os_timer_for_ldm(struct timer_list *t)
++{
++	PVBUS_EXT vbus_ext = (PVBUS_EXT)from_timer(vbus_ext, t, timer);
++	unsigned long flags=0;
+ 
+ 	spin_lock_irqsave(vbus_ext->lock, flags);
+ 	ldm_on_timer((PVBUS)vbus_ext->vbus);
+ 	spin_unlock_irqrestore(vbus_ext->lock, flags);
+ }
++#endif
+ 
+ void  os_request_timer(void * osext, HPT_U32 interval)
+ {
+ 	PVBUS_EXT vbus_ext = osext;
+ 
+ 	HPT_ASSERT(vbus_ext->ext_type==EXT_TYPE_VBUS);
+-	
++
+ 	del_timer(&vbus_ext->timer);
+ 	vbus_ext->timer.function = os_timer_for_ldm;
+-	vbus_ext->timer.data = (unsigned long)vbus_ext;
++
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+ 	vbus_ext->timer.expires = jiffies + 1 + interval / (1000000/HZ);
++	vbus_ext->timer.data = (unsigned long)vbus_ext;
+ 	add_timer(&vbus_ext->timer);
++#else
++	vbus_ext->timer.expires = 0;										// init to 0 in case not used
++	timer_setup(&vbus_ext->timer,os_timer_for_ldm,0);					// setup the timer
++	mod_timer(&vbus_ext->timer,jiffies + 1 + interval / (1000000/HZ));	// set expiration time
++#endif
+ }
+ 
+ HPT_TIME os_query_time(void)
+@@ -686,7 +710,7 @@
+ 				"=r" (esp) : "0" (THREAD_SIZE - 1));
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+ 	if (esp - sizeof(struct thread_info) < size) {
+-#else 
++#else
+ 	if (esp - sizeof(struct task_struct) < size) {
+ #endif
+ 		printk("*** %s: stack too small (0x%lx) ***\n", location, esp);
+@@ -699,7 +723,7 @@
+ #if defined(MODULE)
+ #if LINUX_VERSION_CODE >KERNEL_VERSION(2, 5, 0)
+ module_param(hpt_dbg_level, uint, 0);
+-#else 
++#else
+ MODULE_PARM(hpt_dbg_level, "i");
+ #endif
+ MODULE_PARM_DESC(hpt_dbg_level, "debug level");
+diff -u -r rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.c rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.c
+--- rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.c	2016-09-19 11:40:56.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.c	2019-06-12 17:43:19.786056000 -0700
+@@ -1,4 +1,4 @@
+-/* $Id: osm_linux.c,v 1.83 2010/05/11 03:09:27 lcn Exp $
++/* $Id: osm_linux.c, v1.5.0 2019/06/03 00:00:00 lcn Exp $
+  *
+  * HighPoint RAID Driver for Linux
+  * Copyright (C) 2005 HighPoint Technologies, Inc. All Rights Reserved.
+@@ -12,7 +12,7 @@
+ static int autorebuild = 1; /* 1: autorebuild, 0: not */
+ #if LINUX_VERSION_CODE > KERNEL_VERSION(2,5,0)
+ module_param(autorebuild, int, 0);
+-#else 
++#else
+ MODULE_PARM(autorebuild, "i");
+ #endif
+ 
+@@ -31,7 +31,7 @@
+ 	PVBUS vbus;
+ 	PVBUS_EXT vbus_ext;
+ 	int order,size;
+-	
++
+ 	if (pci_enable_device(pcidev)) {
+ 		os_printk("failed to enable the pci device");
+ 		goto failed;
+@@ -94,7 +94,7 @@
+ 			hba->pciaddr.function, pcidev->irq);
+ 
+ 	if (!ldm_register_adapter(&hba->ldm_adapter)) {
+-		for (order=0, size=PAGE_SIZE; size<sizeof(VBUS_EXT) + ldm_get_vbus_size(); order++, size<<=1) ;	
++		for (order=0, size=PAGE_SIZE; size<sizeof(VBUS_EXT) + ldm_get_vbus_size(); order++, size<<=1) ;
+ 		vbus_ext = (PVBUS_EXT)__get_free_pages(GFP_ATOMIC, order);
+ 
+ 		if (!vbus_ext) {
+@@ -309,7 +309,7 @@
+ 	up(&((PVBUS_EXT)osext)->sem);
+ }
+ 
+-
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
+ static int hpt_detect (Scsi_Host_Template *tpnt)
+ {
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+@@ -393,7 +393,7 @@
+ 
+ 		spin_lock_irq(&initlock);
+ 		ldm_set_autorebuild(vbus, autorebuild);
+-		spin_unlock_irq(&initlock);		
++		spin_unlock_irq(&initlock);
+ 	}
+ 
+ 	spin_lock_irq_io_request_lock;
+@@ -415,7 +415,7 @@
+ 
+ #ifdef CONFIG_SCSI_PROC_FS
+ 		host->max_id = osm_max_targets;
+-#else 
++#else
+ 		host->max_id = osm_max_targets +1;
+ #endif
+ 		host->max_lun = 1;
+@@ -446,7 +446,7 @@
+ 		if (vbus_ext->tasks)
+ 			tasklet_schedule(&vbus_ext->worker);
+ 	}
+-#else 
++#else
+ 	PVBUS_EXT vbus_ext;
+ 	PVBUS vbus;
+ 	int i = 0;
+@@ -457,6 +457,7 @@
+ #endif
+ 	return i;
+ }
++#endif
+ 
+ static unsigned int fill_msense_rw_recovery(PVDEV pVDev, HPT_U8 *p, HPT_U32 output_len, HPT_U32 bufflen)
+ {
+@@ -508,11 +509,11 @@
+ 	sg = scsi_sglist(cmd);
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+ 	*pbuf = kmap_atomic(HPT_SG_PAGE(sg)) + sg->offset;
+-#else 
++#else
+ 	*pbuf = kmap_atomic(HPT_SG_PAGE(sg), HPT_KMAP_TYPE) + sg->offset;
+ #endif
+ 	buflen = sg->length;
+-#else 
++#else
+ 
+ 	if (cmd->use_sg) {
+ 		struct scatterlist *sg = (struct scatterlist *) cmd->request_buffer;
+@@ -522,7 +523,7 @@
+ 		if (sg->page)
+ 			sg->address = kmap_atomic(sg->page, HPT_KMAP_TYPE) + sg->offset;
+ 		*pbuf = sg->address;
+-#else 
++#else
+ 		*pbuf = sg->address;
+ #endif
+ 		buflen = sg->length;
+@@ -542,10 +543,10 @@
+ 	sg = scsi_sglist(cmd);
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
+ 	kunmap_atomic((char *)buf - sg->offset);
+-#else 
++#else
+ 	kunmap_atomic((char *)buf - sg->offset, HPT_KMAP_TYPE);
+ #endif
+-#else 
++#else
+ 
+ 	if (cmd->use_sg) {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+@@ -567,7 +568,7 @@
+ #ifdef SAM_STAT_CHECK_CONDITION
+ #define  HPT_SAM_STAT_CHECK_CONDITION SAM_STAT_CHECK_CONDITION
+ #define  HPT_SAM_STAT_GOOD SAM_STAT_GOOD
+-#else 
++#else
+ /*deprecated as they are shifted 1 bit right in SAM-3 Status code*/
+ #define  HPT_SAM_STAT_CHECK_CONDITION CHECK_CONDITION
+ #define  HPT_SAM_STAT_GOOD GOOD
+@@ -596,7 +597,7 @@
+ 	int opcode = cdb[2] & 0x3f;
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+ 	int bufflen = scsi_bufflen(SCpnt);
+-#else 
++#else
+ 	int bufflen = SCpnt->request_bufflen;
+ #endif
+ 
+@@ -790,12 +791,12 @@
+ {
+ 	Scsi_Cmnd *SCpnt = (Scsi_Cmnd *)pCmd->priv;
+ 	int need_sense = 0;
+-	
++
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+-	if (HPT_SCP(SCpnt)->mapped) { 
++	if (HPT_SCP(SCpnt)->mapped) {
+ 		scsi_dma_unmap(SCpnt);
+ 	}
+-#else 
++#else
+ 
+ 	if (HPT_SCP(SCpnt)->mapped) {
+ 		if (SCpnt->use_sg)
+@@ -829,14 +830,14 @@
+ 						&SCpnt->sense_buffer[3]);
+ 			SCpnt->sense_buffer[1] &= 0x0f;
+ 			need_sense = 1;
+-		}		
++		}
+ 		else {
+ 			if(SCpnt->cmnd[2] & 0x20) { /*CK_COND = 1 */
+ 				/*valid ATA return descriptor*/
+ 				SCpnt->sense_buffer[1] = 0x1;/*sense key*/
+ 				SCpnt->sense_buffer[2] = 0x0;/*asc*/
+ 				SCpnt->sense_buffer[3] = 0x1d;/*ascq*/
+-				need_sense = 1; 
++				need_sense = 1;
+ 			}
+ 		}
+ 		if (need_sense) {
+@@ -914,7 +915,7 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+ 	sgList = scsi_sglist(SCpnt);
+ 	nseg = scsi_sg_count(SCpnt);
+-#else 
++#else
+ 	sgList = (struct scatterlist *)SCpnt->request_buffer;
+ 	nseg = SCpnt->use_sg;
+ #endif
+@@ -947,7 +948,7 @@
+ 				}
+ 				pSg[idx].eot = (idx==nseg-1)? 1 : 0;
+ 			}
+-#else 
++#else
+ 			for (idx = 0; idx < nseg; idx++) {
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+ 				struct page *page = HPT_SG_PAGE(&sgList[idx]);
+@@ -958,7 +959,7 @@
+ 					os_set_sgptr(&pSg[idx], (HPT_U8 *)sgList[idx].address);
+ 				else
+ 					os_set_sgptr(&pSg[idx], (HPT_U8 *)page_address(page) + sgList[idx].offset);
+-#else 
++#else
+ 				os_set_sgptr(&pSg[idx], (HPT_U8 *)sgList[idx].address);
+ #endif
+ 				pSg[idx].size = sgList[idx].length;
+@@ -1008,7 +1009,7 @@
+ 			if (pSg->size & 1) return 0;
+ 			pSg->eot = (idx==HPT_SCP(SCpnt)->sgcnt-1)? 1 : 0;
+ 		}
+-#else 
++#else
+ 		if (SCpnt->use_sg) {
+ 			BUS_ADDRESS addr, last=0;
+ 			unsigned int length;
+@@ -1069,11 +1070,11 @@
+ static void hpt_scsi_set_sense(Scsi_Cmnd *SCpnt, HPT_U8 sk, HPT_U8 asc, HPT_U8 ascq)
+ {
+ 		SCpnt->result = (DRIVER_SENSE << 24) | HPT_SAM_STAT_CHECK_CONDITION;
+-		SCpnt->sense_buffer[0] = 0x70;	
+-		SCpnt->sense_buffer[2] = sk; 
+-		SCpnt->sense_buffer[7] = 18 - 8;	
+-		SCpnt->sense_buffer[12] = asc;	
+-		SCpnt->sense_buffer[13] = ascq; 
++		SCpnt->sense_buffer[0] = 0x70;
++		SCpnt->sense_buffer[2] = sk;
++		SCpnt->sense_buffer[7] = 18 - 8;
++		SCpnt->sense_buffer[12] = asc;
++		SCpnt->sense_buffer[13] = ascq;
+ 		return;
+ }
+ 
+@@ -1087,7 +1088,7 @@
+ 		if (pCmd->Result == RETURN_SUCCESS) {
+ 			SCpnt->result = HPT_SAM_STAT_GOOD;
+ 		} else {
+-			hpt_scsi_set_sense(SCpnt, ABORTED_COMMAND, 
++			hpt_scsi_set_sense(SCpnt, ABORTED_COMMAND,
+ 				0, 0);
+ 		}
+ 
+@@ -1098,7 +1099,7 @@
+ }
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,37)
+ static int hpt_queuecommand (Scsi_Cmnd * SCpnt, void (*done) (Scsi_Cmnd *))
+-#else 
++#else
+ static int hpt_queuecommand_lck (Scsi_Cmnd * SCpnt, void (*done) (Scsi_Cmnd *))
+ #endif
+ {
+@@ -1134,7 +1135,7 @@
+ 			PINQUIRYDATA inquiryData;
+ 			int buflen;
+ 			HPT_U8 *rbuf;
+-			
++
+ 			if ((buflen = scsicmd_buf_get(SCpnt, (void **)&inquiryData))<36) {
+ 				scsicmd_buf_put(SCpnt, inquiryData);
+ 				SCpnt->result = ((DRIVER_INVALID|SUGGEST_ABORT)<<24) | (DID_ABORT<<16);
+@@ -1155,24 +1156,24 @@
+ 					rbuf[6] = 0x83;
+ 					SCpnt->result = (DID_OK<<16);
+ 					break;
+-				case 0x80: 
++				case 0x80:
+ 					rbuf[0] = 0;
+ 					rbuf[1] = 0x80;
+ 					rbuf[2] = 0;
+ 					rbuf[3] = 1;
+ 					rbuf[4] = 0x20;
+-					SCpnt->result = (DID_OK<<16);				
++					SCpnt->result = (DID_OK<<16);
+ 					break;
+ 				case 0x83:
+ 					rbuf[0] = 0;
+ 					rbuf[1] = 0x83;
+ 					rbuf[2] = 0;
+-					rbuf[3] = 12; 
++					rbuf[3] = 12;
+ 					rbuf[4] = 1;
+-					rbuf[5] = 2; 
++					rbuf[5] = 2;
+ 					rbuf[6] = 0;
+-					rbuf[7] = 8; 
+-					rbuf[8] = 0; 
++					rbuf[7] = 8;
++					rbuf[8] = 0;
+ 					rbuf[9] = 0x19;
+ 					rbuf[10] = 0x3C;
+ 					rbuf[11] = 0;
+@@ -1180,7 +1181,7 @@
+ 					rbuf[13] = 0;
+ 					rbuf[14] = 0;
+ 					rbuf[15] = 0;
+-					SCpnt->result = (DID_OK<<16);				
++					SCpnt->result = (DID_OK<<16);
+ 					break;
+ 				default:
+ 					scsi_check_condition(SCpnt, ILLEGAL_REQUEST, 0x24, 0);
+@@ -1190,7 +1191,7 @@
+ 				scsicmd_buf_put(SCpnt, inquiryData);
+ 			} else if (SCpnt->cmnd[2]) {
+ 				scsi_check_condition(SCpnt, ILLEGAL_REQUEST, 0x24, 0);
+-				scsicmd_buf_put(SCpnt, inquiryData);			
++				scsicmd_buf_put(SCpnt, inquiryData);
+ 			}
+ 			 else {
+ 				inquiryData->Versions = 5; /* SPC-3 */
+@@ -1240,9 +1241,9 @@
+ 
+ 		HPT_ASSERT(pVDev->type == VD_RAW && pVDev->u.raw.legacy_disk);
+ 
+-		
+-		
+-		
++
++
++
+ 		if ((SCpnt->cmnd[4] & 0x2) ||
+ 			((SCpnt->cmnd[4] >> 4) & 0xf) != 0) {
+ 			hpt_scsi_set_sense(SCpnt, ILLEGAL_REQUEST, 0x24, 0x00);
+@@ -1250,12 +1251,12 @@
+ 		}
+ 
+ 		if (SCpnt->cmnd[4] & 0x1) {/*start power with reset*/
+-			
++
+ 			pVDev->Class->reset(pVDev);
+ 			SCpnt->result = DID_OK<<16;
+ 			SCpnt->scsi_done(SCpnt);
+ 		} else { /*stop, put it into standby mode*/
+-			
++
+ 			pCmd = ldm_alloc_cmds(pVDev->vbus, pVDev->cmds_per_request);
+ 			if (!pCmd) {
+ 				HPT_ASSERT(0);
+@@ -1276,7 +1277,7 @@
+ 	case 0x35: /*SYNCHRONIZE_CACHE_12*/
+ 	case 0x91: /*SYNCHRONIZE_CACHE_16*/
+ 	{
+-					
++
+ 		if (mIsArray(pVDev->type) &&
+ 				pVDev->u.array.transform &&
+ 				pVDev->u.array.transform->target) {
+@@ -1302,14 +1303,14 @@
+ 		ldm_queue_cmd(pCmd);
+ 		return 0;
+ 	}
+-		
++
+ 	case 0x85: /*ATA_16*/
+ 	case 0xA1: /*ATA_12*/
+ 	{
+ 		HPT_U8 prot;
+ 		PassthroughCmd *passthru;
+-		
+-		
++
++
+ 		if (mIsArray(pVDev->type)) {
+ 			SCpnt->result = ((DRIVER_INVALID|SUGGEST_ABORT)<<24) | (DID_ABORT<<16);
+ 			break;
+@@ -1319,7 +1320,7 @@
+ 
+ 		prot = (SCpnt->cmnd[1] & 0x1e) >> 1;
+ 
+-		
++
+ 		if ((prot < 3 || prot > 7) && prot != 0x0a && prot != 0x0b)
+ 			goto set_sense;
+ 
+@@ -1369,7 +1370,7 @@
+ 		}
+ 
+ 		if (SCpnt->cmnd[1] & 0xe0) {
+-			
++
+ 
+ 			if (!(passthru->bCommandReg == ATA_CMD_READ_MULTI ||
+ 			    passthru->bCommandReg == ATA_CMD_READ_MULTI_EXT ||
+@@ -1381,7 +1382,7 @@
+ 			}
+ 		}
+ 
+-		
++
+ 		if (passthru->bFeaturesReg == ATA_SET_FEATURES_XFER &&
+ 			passthru->bCommandReg == ATA_CMD_SET_FEATURES) {
+ 			goto error;
+@@ -1390,10 +1391,10 @@
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,23)
+ 		passthru->nSectors = scsi_bufflen(SCpnt) / ATA_SECTOR_SIZE;
+ 		pCmd->buildsgl = os_buildsgl;
+-#else 
+-		
++#else
++
+ 		passthru->nSectors = SCpnt->request_bufflen / ATA_SECTOR_SIZE;
+-		
++
+ 		/*check sg used*/
+ 		if (SCpnt->use_sg)
+ 			pCmd->buildsgl = os_buildsgl;
+@@ -1404,13 +1405,13 @@
+ 			default: /*None data*/
+ 				break;
+ 			case 4: /*PIO data in, T_DIR=1 match check*/
+-				if ((SCpnt->cmnd[2] & 3) && 
++				if ((SCpnt->cmnd[2] & 3) &&
+ 					(SCpnt->cmnd[2] & 0x8) == 0)
+ 					goto error;
+ 				pCmd->flags.data_in = 1;
+ 				break;
+ 			case 5: /*PIO data out, T_DIR=0 match check*/
+-				if ((SCpnt->cmnd[2] & 3) && 
++				if ((SCpnt->cmnd[2] & 3) &&
+ 					(SCpnt->cmnd[2] & 0x8))
+ 					goto error;
+ 				pCmd->flags.data_out = 1;
+@@ -1421,7 +1422,7 @@
+ 			case 0xb:
+ 				pCmd->flags.data_in = 1;
+ 				pCmd->flags.data_out = 1;
+-				break;			
++				break;
+ 		}
+ 
+ 		pCmd->type = CMD_TYPE_PASSTHROUGH;
+@@ -1478,19 +1479,19 @@
+ 					rbuf[3] = 1;
+ 					rbuf[4] = 0x20;
+ 				}
+-				SCpnt->result = (DID_OK<<16);				
++				SCpnt->result = (DID_OK<<16);
+ 				break;
+ 			}
+ 			case 0x83:
+ 				rbuf[0] = 0;
+ 				rbuf[1] = 0x83;
+ 				rbuf[2] = 0;
+-				rbuf[3] = 12; 
++				rbuf[3] = 12;
+ 				rbuf[4] = 1;
+-				rbuf[5] = 2; 
++				rbuf[5] = 2;
+ 				rbuf[6] = 0;
+-				rbuf[7] = 8; 
+-				rbuf[8] = 0; 
++				rbuf[7] = 8;
++				rbuf[8] = 0;
+ 				rbuf[9] = 0x19;
+ 				rbuf[10] = 0x3C;
+ 				rbuf[11] = 0;
+@@ -1498,7 +1499,7 @@
+ 				rbuf[13] = 0;
+ 				rbuf[14] = 0;
+ 				rbuf[15] = 0;
+-				SCpnt->result = (DID_OK<<16);				
++				SCpnt->result = (DID_OK<<16);
+ 				break;
+ 			default:
+ 				scsi_check_condition(SCpnt, ILLEGAL_REQUEST, 0x24, 0);
+@@ -1509,7 +1510,7 @@
+ 			break;
+ 		} else if (SCpnt->cmnd[2]) {
+ 			scsi_check_condition(SCpnt, ILLEGAL_REQUEST, 0x24, 0);
+-			scsicmd_buf_put(SCpnt, inquiryData);			
++			scsicmd_buf_put(SCpnt, inquiryData);
+ 			break;
+ 		}
+ 
+@@ -1520,23 +1521,23 @@
+ 		inquiryData->CommandQueue = 1;
+ 
+ 		if (buflen > 63) {
+-			rbuf = (HPT_U8 *)inquiryData;			
++			rbuf = (HPT_U8 *)inquiryData;
+ 			rbuf[58] = 0x60;
+ 			rbuf[59] = 0x3;
+-			
+-			rbuf[64] = 0x3; 
+-			rbuf[66] = 0x3; 
++
++			rbuf[64] = 0x3;
++			rbuf[66] = 0x3;
+ 			rbuf[67] = 0x20;
+-			
++
+ 		}
+-		
++
+ 		if (pVDev->type == VD_RAW) {
+ 			pVDev->u.raw.him->get_device_config(pVDev->u.raw.phy_dev,&devconf);
+ 
+ 			if ((devconf.pIdentifyData->GeneralConfiguration & 0x80))
+ 				inquiryData->RemovableMedia = 1;
+ 
+-			
++
+ 			memcpy(&inquiryData->VendorId, "ATA     ", 8);
+ 			memcpy(&inquiryData->ProductId, devconf.pIdentifyData->ModelNumber, 16);
+ 			ldm_ide_fixstring((HPT_U8 *)&inquiryData->ProductId, 16);
+@@ -1574,7 +1575,7 @@
+ 			sector_size_shift = pVDev->u.array.sector_size_shift;
+ 
+ 		new_cap = pVDev->capacity >> sector_size_shift;
+-		
++
+ 		if (new_cap > 0xfffffffful)
+ 			cap = 0xffffffff;
+ 		else
+@@ -1747,29 +1748,31 @@
+ #endif
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0) /* 2.666666.x */
+-static int hpt_slave_config(struct scsi_device *sdev)
+-{
+-	struct request_queue *q = sdev->request_queue;
+-	if (sdev->type == TYPE_TAPE) {
+-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,31)
+-		blk_queue_max_sectors(q, 8192);
+-#else 
+-		blk_queue_max_hw_sectors(q, 8192);
+-#endif
+-
+-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,25)
+-		set_bit(QUEUE_FLAG_CLUSTER, &q->queue_flags);
+-#elif LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,36)
+-		queue_flag_set_unlocked(QUEUE_FLAG_CLUSTER, q);
+-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,30)
+-		q->limits.no_cluster = 0;
+-#endif
+-#else 
+-		q->limits.cluster = 1;
+-#endif
++	static int hpt_slave_config(struct scsi_device *sdev)
++	{
++		struct request_queue *q = sdev->request_queue;
++		if (sdev->type == TYPE_TAPE) {
++		#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,31)
++				blk_queue_max_sectors(q, 8192);
++		#else
++				blk_queue_max_hw_sectors(q, 8192);
++		#endif
++
++		#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,25)
++				set_bit(QUEUE_FLAG_CLUSTER, &q->queue_flags);
++		#elif LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,36)
++				queue_flag_set_unlocked(QUEUE_FLAG_CLUSTER, q);
++			#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,30)
++					q->limits.no_cluster = 0;
++			#endif
++		#else
++			#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)
++				q->limits.cluster = 1;
++			#endif
++		#endif
++		}
++		return 0;
+ 	}
+-	return 0;
+-}
+ #endif
+ 
+ static int hpt_reset (Scsi_Cmnd *SCpnt)
+@@ -1816,10 +1819,19 @@
+ 	up(sem);
+ }
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++static void cmd_timeout_sem(struct timer_list *t)
++{
++	PSEM_TIMER psem_tm;
++	psem_tm = (PSEM_TIMER)from_timer(psem_tm, t, timer);
++	up(&psem_tm->sem);
++}
++#else
+ static void cmd_timeout_sem(unsigned long data)
+ {
+ 	up((struct semaphore *)(HPT_UPTR)data);
+ }
++#endif
+ 
+ /*
+  * flush a vdev (without retry).
+@@ -1828,8 +1840,7 @@
+ {
+ 	PCOMMAND pCmd;
+ 	unsigned long flags, timeout;
+-	struct timer_list timer;
+-	struct semaphore sem;
++	SEM_TIMER sem_tm;
+ 	int result = 0;
+ 	HPT_UINT count;
+ 
+@@ -1853,31 +1864,40 @@
+ 	pCmd->type = CMD_TYPE_FLUSH;
+ 	pCmd->flags.hard_flush = 1;
+ 	pCmd->target = vd;
+-	pCmd->priv2 = (HPT_UPTR)&sem;
++	pCmd->priv2 = (HPT_UPTR)&sem_tm.sem;
+ 	pCmd->done = hpt_flush_done;
+ 
+-	sema_init(&sem, 0);
++	sema_init(&sem_tm.sem, 0);
+ 	ldm_queue_cmd(pCmd);
+ 
+ wait:
+ 	spin_unlock_irqrestore(vbus_ext->lock, flags);
+ 
+-	if (down_trylock(&sem)) {
++	if (down_trylock(&sem_tm.sem)) {
+ 		timeout = jiffies + 20 * HZ;
+-		init_timer(&timer);
+-		timer.expires = timeout;
+-		timer.data = (HPT_UPTR)&sem;
+-		timer.function = cmd_timeout_sem;
+-		add_timer(&timer);
+-		if (down_interruptible(&sem))
+-			down(&sem);
+-		del_timer(&timer);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++		timer_setup_on_stack(&sem_tm.timer, NULL, 0);
++#else
++		init_timer(&sem_tm.timer);
++		sem_tm.timer.data = (HPT_UPTR)&sem_tm.sem;
++#endif
++		sem_tm.timer.expires = timeout;
++		sem_tm.timer.function = cmd_timeout_sem;
++		add_timer(&sem_tm.timer);
++		if (down_interruptible(&sem_tm.sem))
++			down(&sem_tm.sem);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++		del_timer_sync(&sem_tm.timer);
++		destroy_timer_on_stack(&sem_tm.timer);
++#else
++		del_timer(&sem_tm.timer);
++#endif
+ 	}
+ 
+ 	spin_lock_irqsave(vbus_ext->lock, flags);
+ 
+ 	if (pCmd->Result==RETURN_PENDING) {
+-		sema_init(&sem, 0);
++		sema_init(&sem_tm.sem, 0);
+ 		ldm_reset_vbus(vd->vbus);
+ 		goto wait;
+ 	}
+@@ -1905,7 +1925,7 @@
+ 	PHBA hba;
+ 	unsigned long flags;
+ 	int i;
+-	int order,size;	
++	int order,size;
+ 
+ 	/* stop all ctl tasks and disable the worker tasklet */
+ 	hpt_stop_tasks(vbus_ext);
+@@ -1942,7 +1962,7 @@
+ 		vbus_ext->hba_list = hba->next;
+ 		kfree(hba);
+ 	}
+-	for (order=0, size=PAGE_SIZE; size<sizeof(VBUS_EXT) + ldm_get_vbus_size(); order++, size<<=1) ;	
++	for (order=0, size=PAGE_SIZE; size<sizeof(VBUS_EXT) + ldm_get_vbus_size(); order++, size<<=1) ;
+ 	free_pages((unsigned long)vbus_ext, order);
+ }
+ 
+@@ -1961,7 +1981,7 @@
+ 		hpt_stop_tasks(vbus_ext);
+ 		tasklet_kill(&vbus_ext->worker);
+ 		vbus_ext->worker.func = 0;
+-		
++
+ 		/* flush devices */
+ 		for (i=0; i<osm_max_targets; i++) {
+ 			PVDEV vd = ldm_find_target(vbus, i);
+@@ -1976,6 +1996,7 @@
+ }
+ #endif
+ 
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
+ static int hpt_release (struct Scsi_Host *host)
+ {
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+@@ -1990,6 +2011,7 @@
+ #endif
+ 	return 0;
+ }
++#endif
+ 
+ #ifndef CONFIG_SCSI_PROC_FS
+ static void  __hpt_do_async_ioctl(PVBUS_EXT vbus_ext,IOCTL_ARG* ioctl_args)
+@@ -1997,7 +2019,7 @@
+ 	PIOCTL_CMD ioctl_cmd;
+ 	PVBUS_EXT ori_vbus_ext;
+ 	unsigned long flags;
+-		
++
+ 	ioctl_cmd = ioctl_args->ioctl_cmnd;
+ 	ioctl_cmd->vbus = (PVBUS)vbus_ext->vbus;
+ 
+@@ -2010,8 +2032,8 @@
+ 	if(ori_vbus_ext != vbus_ext){
+ 		spin_unlock_irqrestore(vbus_ext->lock, flags);
+ 	}
+-	
+-	return;	
++
++	return;
+ 
+ }
+ 
+@@ -2027,7 +2049,7 @@
+ 
+ 	if (arg->result == HPT_IOCTL_RESULT_OK){
+ 		buflen = scsicmd_buf_get(ioctl_cmd->SCpnt, (void **)&buf);
+-		*(HPT_U32 *)buf = *(arg->lpBytesReturned);	
++		*(HPT_U32 *)buf = *(arg->lpBytesReturned);
+ 		if (arg->nOutBufferSize) {
+ 			memcpy((HPT_U8  *)&(buf [4]),arg->lpOutBuffer, arg->nOutBufferSize);
+ 		}
+@@ -2036,7 +2058,7 @@
+ 
+ 	}
+ 	else if (arg->result == HPT_IOCTL_RESULT_FAILED ||arg->result == HPT_IOCTL_RESULT_INVALID || arg->result == HPT_IOCTL_RESULT_RETRY){
+-		KdPrint(("receive ioctl_args:%p iocode:%d  result:%x",arg,arg->dwIoControlCode&0xff,arg->result));		
++		KdPrint(("receive ioctl_args:%p iocode:%d  result:%x",arg,arg->dwIoControlCode&0xff,arg->result));
+ 	}
+ 	else if (arg->result == HPT_IOCTL_RESULT_WRONG_VBUS){
+ 		arg->result = HPT_IOCTL_RESULT_FAILED;
+@@ -2046,8 +2068,8 @@
+ 			return;
+ 		 }
+ 	}
+-	
+-	ioctl_cmd->SCpnt->scsi_done(ioctl_cmd->SCpnt);	
++
++	ioctl_cmd->SCpnt->scsi_done(ioctl_cmd->SCpnt);
+ 	if (arg->lpInBuffer){kfree(arg->lpInBuffer);}
+ 	if (arg->lpOutBuffer){kfree(arg->lpOutBuffer);}
+ 	kfree(ioctl_cmd);
+@@ -2066,7 +2088,7 @@
+ 	if ((buflen = scsicmd_buf_get(SCpnt, (void **)&buf))<4) {
+ 		OsPrint(("invalid ioctl cmd,return"));
+ 		goto deal_err;
+-	}	
++	}
+ 
+ 	if(!(ioctl_cmd = kmalloc(sizeof(IOCTL_CMD), GFP_ATOMIC))){
+ 		OsPrint(("not got memory for ioctl_cmd"));
+@@ -2075,7 +2097,7 @@
+ 	memset(ioctl_cmd,0,sizeof(IOCTL_CMD));
+ 
+ 	ioctl_args = & ioctl_cmd->ioctl_args;
+-	ioctl_args->lpBytesReturned = & ioctl_cmd->bytesReturned;	
++	ioctl_args->lpBytesReturned = & ioctl_cmd->bytesReturned;
+ 	ioctl_args->dwIoControlCode = HPT_CTL_CODE( *(HPT_U32 *)(&SCpnt->cmnd[4]));
+ 	ioctl_args->nInBufferSize = *(HPT_U32 *)(&SCpnt->cmnd[8]);
+ 	ioctl_args->nOutBufferSize = *(HPT_U32 *)(&SCpnt->cmnd[12]);
+@@ -2103,11 +2125,11 @@
+ 	ioctl_args->ioctl_cmnd = ioctl_cmd;
+ 	ioctl_cmd->SCpnt =  SCpnt;
+ 	ioctl_args->result = -1;
+-	
+-	first_vbus = ldm_get_next_vbus(0, (void **)(void *)&first_vbus_ext);		
++
++	first_vbus = ldm_get_next_vbus(0, (void **)(void *)&first_vbus_ext);
+ 	__hpt_do_async_ioctl(first_vbus_ext,ioctl_args);
+-	return;	
+-	
++	return;
++
+ deal_err:
+ 	scsicmd_buf_put(SCpnt, buf);
+ 	SCpnt->result = ((DRIVER_INVALID|SUGGEST_ABORT)<<24) | (DID_ABORT<<16);
+@@ -2125,16 +2147,25 @@
+ 	arg->ioctl_cmnd = 0;
+ }
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++static void hpt_ioctl_timeout(struct timer_list *t)
++{
++
++	PSEM_TIMER psem_tm;
++	psem_tm = (PSEM_TIMER)from_timer(psem_tm, t, timer);
++	up(&psem_tm->sem);
++}
++#else
+ static void hpt_ioctl_timeout(unsigned long data)
+ {
+ 	up((struct semaphore *)data);
+ }
++#endif
+ 
+ void __hpt_do_ioctl(PVBUS_EXT vbus_ext, IOCTL_ARG *ioctl_args)
+ {
+ 	unsigned long flags, timeout;
+-	struct timer_list timer;
+-	struct semaphore sem;
++	SEM_TIMER sem_tm;
+ 
+ 	if (vbus_ext->needs_refresh
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+@@ -2147,8 +2178,8 @@
+ 
+ 	ioctl_args->result = -1;
+ 	ioctl_args->done = hpt_ioctl_done;
+-	ioctl_args->ioctl_cmnd = &sem;
+-	sema_init(&sem, 0);
++	ioctl_args->ioctl_cmnd = &sem_tm.sem;
++	sema_init(&sem_tm.sem, 0);
+ 
+ 	spin_lock_irqsave(vbus_ext->lock, flags);
+ 	ldm_ioctl((PVBUS)vbus_ext->vbus, ioctl_args);
+@@ -2156,22 +2187,31 @@
+ wait:
+ 	spin_unlock_irqrestore(vbus_ext->lock, flags);
+ 
+-	if (down_trylock(&sem)) {
++	if (down_trylock(&sem_tm.sem)) {
+ 		timeout = jiffies + 20 * HZ;
+-		init_timer(&timer);
+-		timer.expires = timeout;
+-		timer.data = (HPT_UPTR)&sem;
+-		timer.function = hpt_ioctl_timeout;
+-		add_timer(&timer);
+-		if (down_interruptible(&sem))
+-			down(&sem);
+-		del_timer(&timer);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++		timer_setup_on_stack(&sem_tm.timer, NULL, 0);
++#else
++		init_timer(&sem_tm.timer);
++		sem_tm.timer.data = (HPT_UPTR)&sem_tm.sem;
++#endif
++		sem_tm.timer.expires = timeout;
++		sem_tm.timer.function = hpt_ioctl_timeout;
++		add_timer(&sem_tm.timer);
++		if (down_interruptible(&sem_tm.sem))
++			down(&sem_tm.sem);
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++		del_timer_sync(&sem_tm.timer);
++		destroy_timer_on_stack(&sem_tm.timer);
++#else
++		del_timer(&sem_tm.timer);
++#endif
+ 	}
+ 
+ 	spin_lock_irqsave(vbus_ext->lock, flags);
+ 
+ 	if (ioctl_args->ioctl_cmnd) {
+-		sema_init(&sem, 0);
++		sema_init(&sem_tm.sem, 0);
+ 		ldm_reset_vbus((PVBUS)vbus_ext->vbus);
+ 		__hpt_do_tasks(vbus_ext);
+ 		goto wait;
+@@ -2314,7 +2354,7 @@
+ }
+ #endif
+ 
+-#else 
++#else
+ static int hpt_proc_info310_get(struct seq_file * seq_info, struct Scsi_Host * host)
+ {
+ 	seq_info->count = hpt_proc_get_info(host, seq_info->buf,0, 0, seq_info->size);
+@@ -2337,7 +2377,7 @@
+ 	memset(&ioctl_arg, 0, sizeof(ioctl_arg));
+ 	memset(&ide_passthrough_header, 0, sizeof(ide_passthrough_header));
+ 
+-	
++
+ 	if (copy_from_user(&ide_passthrough_header.bFeaturesReg, arg+2, 1) ||
+ 		copy_from_user(&ide_passthrough_header.bSectorCountReg, arg+3, 1) ||
+ 		copy_from_user(&ide_passthrough_header.bLbaLowReg, arg+1, 1) ||
+@@ -2505,7 +2545,7 @@
+ 				goto invalid;
+ 		break;
+ 	default:
+-		
++
+ 		if(copy_to_user(arg, &((PIDE_PASS_THROUGH_HEADER)ioctl_arg.lpOutBuffer)->bCommandReg,1) ||/*status */
+ 		copy_to_user(arg+1,&((PIDE_PASS_THROUGH_HEADER)ioctl_arg.lpOutBuffer)->bFeaturesReg,1)||/*error */
+ 		copy_to_user(arg+2,&((PIDE_PASS_THROUGH_HEADER)ioctl_arg.lpOutBuffer)->bSectorCountReg,1))/*nsector */
+@@ -2528,7 +2568,7 @@
+ 	return -EINVAL;
+ }
+ 
+-static HPT_U32 hpt_scsi_ioctl_get_diskid(Scsi_Device * dev, int cmd, void *arg)
++static HPT_U32 hpt_scsi_ioctl_get_diskid(Scsi_Device * dev, unsigned int cmd, void *arg)
+ {
+ 	if (cmd==0x3ff) {
+ 		int data[4];
+@@ -2537,7 +2577,7 @@
+ 
+ 		memset(&ioctl_arg,0,sizeof(ioctl_arg));
+ 
+-		
++
+ 		if (copy_from_user(data, arg, 4*sizeof(int))){
+ 			/* for the return value is used to set diskid */
+ 			return 0;
+@@ -2581,9 +2621,9 @@
+ }
+ 
+ 
+-int (*hpt_scsi_ioctl_handler)(Scsi_Device * dev, int cmd, void *arg) = 0;
++int (*hpt_scsi_ioctl_handler)(Scsi_Device * dev, unsigned int cmd, void *arg) = 0;
+ 
+-static int hpt_scsi_ioctl(Scsi_Device * dev, int cmd, void *arg)
++static int hpt_scsi_ioctl(Scsi_Device * dev, unsigned int cmd, void *arg)
+ {
+ 	/* support for HDIO_xxx ioctls */
+ 	if ((cmd & 0xfffff300)==0x300) {
+@@ -2608,8 +2648,10 @@
+  */
+ static Scsi_Host_Template driver_template = {
+ 	name:                    driver_name,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
+ 	detect:                  hpt_detect,
+ 	release:                 hpt_release,
++#endif
+ 	queuecommand:            hpt_queuecommand,
+ 	eh_device_reset_handler: hpt_reset,
+ 	eh_bus_reset_handler:    hpt_reset,
+@@ -2620,7 +2662,9 @@
+ 	unchecked_isa_dma:       0,
+ 	emulated:                0,
+ 	/* ENABLE_CLUSTERING will cause problem when we handle PIO for highmem_io */
++#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+ 	use_clustering:          DISABLE_CLUSTERING,
++#endif
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0) /* 2.4.x */
+ 	use_new_eh_code:         1,
+ 	proc_name:               driver_name,
+@@ -2635,7 +2679,7 @@
+ 	proc_name:               driver_name,
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
+ 	proc_info:               hpt_proc_info26,
+-#else 
++#else
+ 	show_info:		hpt_proc_info310_get,
+ 	write_info:		hpt_proc_info310_set,
+ #endif
+@@ -2653,7 +2697,7 @@
+ #include "scsi_module.c"
+ EXPORT_NO_SYMBOLS;
+ 
+-#else 
++#else
+ 
+ static int hpt_init_all(HIM *him, struct pci_dev *dev)
+ {
+@@ -2685,8 +2729,12 @@
+ 		spin_unlock_irq_io_request_lock;
+ 		spin_lock_init(&initlock);
+ 		vbus_ext->lock = &initlock;
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++		timer_setup(&vbus_ext->timer, NULL, 0);
++#else
+ 		init_timer(&vbus_ext->timer);
+-		
++#endif
++
+ 		for (hba = vbus_ext->hba_list; hba; hba = hba->next) {
+ 			if (!hba->ldm_adapter.him->initialize(hba->ldm_adapter.him_handle)) {
+ 				os_printk("fail to initialize hardware");
+@@ -2724,7 +2772,7 @@
+ 
+ #ifdef CONFIG_SCSI_PROC_FS
+ 		host->max_id = osm_max_targets;
+-#else 
++#else
+ 		host->max_id = osm_max_targets + 1;
+ #endif
+ 		host->max_lun = 1;
+@@ -2772,12 +2820,12 @@
+ 
+ freeresource:
+ 	for (hba = vbus_ext->hba_list; hba; hba = hba->next) {
+-		
++
+ 		pci_release_regions(hba->pcidev);
+ 		pci_disable_device(hba->pcidev);
+ 		kfree(hba);
+ 	}
+-	
++
+ 	return -1;
+ }
+ 
+@@ -2913,7 +2961,10 @@
+ module_exit(exit_this_scsi_driver);
+ 
+ #endif
+-
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
++MODULE_LICENSE("GPL");
++#else
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,10)
+ MODULE_LICENSE("Proprietary");
+ #endif
++#endif
+diff -u -r rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.h rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.h
+--- rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.h	2016-09-19 11:40:56.000000000 -0700
++++ rr64xl-linux-src-v1.4.0/osm/linux/osm_linux.h	2019-06-12 17:44:31.561260000 -0700
+@@ -1,4 +1,4 @@
+-/* $Id: osm_linux.h,v 1.26 2010/05/11 03:09:27 lcn Exp $
++/* $Id: osm_linux.h, v1.5.0 2019/06/03 00:00:00 lcn Exp $
+  *
+  * HighPoint RAID Driver for Linux
+  * Copyright (C) 2005 HighPoint Technologies, Inc. All Rights Reserved.
+@@ -59,7 +59,7 @@
+ #include <scsi/scsi_ioctl.h>
+ /* no sg support in 2.4 */
+ #define CONFIG_SCSI_PROC_FS
+-#else 
++#else
+ #include <linux/blkdev.h>
+ #include <scsi/scsi_cmnd.h>
+ #include <scsi/scsi_device.h>
+@@ -73,7 +73,7 @@
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,4)
+ #include "hosts.h"
+-#else 
++#else
+ #include <scsi/scsi_host.h>
+ #endif
+ 
+@@ -84,7 +84,7 @@
+ 	u8 DeviceType : 5;
+ 	u8 RemovableMedia : 1;
+ 	u8 DeviceTypeModifier : 7;
+-#else 
++#else
+ 	u8 DeviceType : 5;
+ 	u8 DeviceTypeQualifier : 3;
+ 	u8 DeviceTypeModifier : 7;
+@@ -103,7 +103,7 @@
+ 	u8 Reserved2 : 1;
+ 	u8 CommandQueue : 1;
+ 	u8 SoftReset : 1;
+-#else 
++#else
+ 	u8 SoftReset : 1;
+ 	u8 CommandQueue : 1;
+ 	u8 Reserved2 : 1;
+@@ -137,7 +137,7 @@
+ #define sc_channel(sc) sc->device->channel
+ #define sc_target(sc)  sc->device->id
+ #define sc_lun(sc)     sc->device->lun
+-#else 
++#else
+ #define sc_host(sc)    sc->host
+ #define sc_channel(sc) sc->channel
+ #define sc_target(sc)  sc->target
+@@ -151,7 +151,7 @@
+ #define IRQ_HANDLED
+ #define IRQ_RETVAL(x)
+ #endif
+-#else 
++#else
+ #define SUGGEST_ABORT 0
+ #endif
+ 
+@@ -164,7 +164,7 @@
+ #define spin_unlock_irq_io_request_lock  spin_unlock_irq(&io_request_lock)
+ #define spin_lock_irqsave_io_request_lock(flags)      spin_lock_irqsave (&io_request_lock, flags)
+ #define spin_unlock_irqrestore_io_request_lock(flags) spin_unlock_irqrestore (&io_request_lock, flags)
+-#else 
++#else
+ #define spin_lock_irq_io_request_lock
+ #define spin_unlock_irq_io_request_lock
+ #define spin_lock_irqsave_io_request_lock(flags)
+@@ -173,14 +173,16 @@
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+ #define scsi_set_max_cmd_len(host, len)
+-#else 
++#else
+ #define scsi_set_max_cmd_len(host, len) host->max_cmd_len = len
+ #endif
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0)
++#define HPT_FIND_PCI_DEVICE pci_get_device
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,0)
+ #define HPT_KMAP_TYPE KM_BIO_SRC_IRQ
+ #define HPT_FIND_PCI_DEVICE pci_get_device
+-#else 
++#else
+ #define HPT_KMAP_TYPE KM_BH_IRQ
+ #define HPT_FIND_PCI_DEVICE pci_find_device
+ #endif
+@@ -190,26 +192,34 @@
+ #endif
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,11)
+-#define hpt_verify_area(type, addr, size) (!access_ok((type), (addr), (size)))
+-#else 
++	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
++		#define hpt_verify_area(type, addr, size) (!access_ok((addr), (size)))
++	#else
++		#define hpt_verify_area(type, addr, size) (!access_ok((type), (addr), (size)))
++	#endif
++
++#else
+ #define hpt_verify_area(type, addr, size) (verify_area((type), (addr), (size)))
+ #endif
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,20)
+ #define HPT_SA_SHIRQ		IRQF_SHARED
+-#else 
++#else
+ #define HPT_SA_SHIRQ		SA_SHIRQ
+ #endif
+ 
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,24)
+ #define HPT_SG_PAGE(sg)		sg_page(sg)
+-#else 
++#else
+ #define HPT_SG_PAGE(sg)		(sg)->page
+ #endif
+ 
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,21)
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
++#define HPT_FIND_SLOT_DEVICE(bus,devfn) pci_get_domain_bus_and_slot(0,bus,devfn)
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,21)
+ #define HPT_FIND_SLOT_DEVICE pci_get_bus_and_slot
+-#else 
++#else
+ #define HPT_FIND_SLOT_DEVICE pci_find_slot
+ #endif
+ 
+@@ -252,7 +262,7 @@
+ 	struct pci_dev *pcidev;
+ 	struct _vbus_ext *vbus_ext;
+ 	struct _hba *next;
+-	
++
+ 	/* HIM instance continues */
+ 	unsigned long him_handle[0] __attribute__((aligned(sizeof(unsigned long))));
+ }
+@@ -263,38 +273,42 @@
+ 	PHBA hba_list;
+ 	struct freelist *freelist_head;
+ 	struct freelist *freelist_dma_head;
+-	
++
+ 	/*
+-	 * all driver entries (except hpt_release/hpt_intr) are protected by 
++	 * all driver entries (except hpt_release/hpt_intr) are protected by
+ 	 * io_request_lock on kernel 2.4, and by host->host_lock on kernel 2.6.
+ 	 * so, it's not necessarily to have our own spinlocks; we just need
+ 	 * to pay attention to our proc/ioctl routines.
+ 	 */
+ 	spinlock_t *lock;
+ 	struct semaphore sem;
+-	
++
+ 	struct Scsi_Host *host;
+-	
++
+ 	struct tasklet_struct worker;
+ 	OSM_TASK *tasks;
+ 	struct timer_list timer;
+-	
++
+ 	HPT_U8 *sd_flags;
+ 	int needs_refresh;
+ 	int mem_order;
+-	
++
+ 	/* the LDM vbus instance continues */
+ 	unsigned long vbus[0] __attribute__((aligned(sizeof(unsigned long))));
+ }
+ VBUS_EXT, *PVBUS_EXT;
+ 
++typedef struct _sem_timer {
++	struct timer_list timer;
++	struct semaphore sem;
++}SEM_TIMER, *PSEM_TIMER;
+ 
+ typedef struct _ioctl_cmd {
+ 	IOCTL_ARG ioctl_args;
+ 	HPT_U32 bytesReturned;
+ 	Scsi_Cmnd * SCpnt;
+ 	PVBUS vbus;
+-	
++
+ }
+ IOCTL_CMD, *PIOCTL_CMD;
+ 
+@@ -304,7 +318,7 @@
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,0)
+ #define set_vbus_lock(vbus_ext) vbus_ext->lock = &io_request_lock
+-#else 
++#else
+ #define set_vbus_lock(vbus_ext) vbus_ext->lock = vbus_ext->host->host_lock
+ #endif
+ 
+@@ -314,6 +328,9 @@
+ void hpt_do_async_ioctl(Scsi_Cmnd * SCpnt);
+ void hpt_do_ioctl(IOCTL_ARG *ioctl_args);
+ void hpt_stop_tasks(PVBUS_EXT vbus_ext);
++
++
+ int hpt_proc_get_info(struct Scsi_Host *host, char *buffer, char **start, off_t offset, int length);
+ 
++
+ #endif
+Only in rr64xl-linux-src-v1.4.0/product: rr62x
+Only in rr64xl-linux-src-v1.4.0/product: rr64xl
