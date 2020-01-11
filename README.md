@@ -20,20 +20,22 @@ Infos: https://wiki.gentoo.org/wiki/HighPoint_RocketRAID
 
 Status of the different modules:
 
-| **Mdoule** | **kernel >= 3.0** | **kernel <= 4.15** | **kernel <= 4.16** | **kernel > 4.16** |
-|:----------:|:-----------------:|:------------------:|:------------------:|:-----------------:|
-|rr172x|yes|yes|no|no|
-|rr174x|yes|yes|no|no|
-|rr2210|yes|no|no|no|
-|rr222x|yes|yes|no|no|
-|rr2240|yes|no|no|no|
-|rr231x|yes|yes|no|no|
-|rr232x|yes|yes|yes|yes|
-|rr2340|yes|yes|yes|no|
-|rr2522|yes|no|no|no|
-|rr2644|yes|no|no|no|
-|rr264x|yes|yes|no|no|
-|rr268x|yes|yes|no|no|
-|rr62x|yes|yes|no|no|
-|rr64x|yes|yes|yes|no|
-|rr64xl|yes|yes|no|no|
+| **Mdoule** | **kernel >= 3.0** | **kernel <= 4.15** | **kernel <= 4.16** | **kernel > 4.16** | **kernel = 5.x** |
+|:----------:|:-----------------:|:------------------:|:------------------:|:-----------------:|:-----------------|
+|rr172x|yes|yes|no|no|nt|
+|rr174x|yes|yes|no|no|nt|
+|rr2210|yes|no|no|no|nt|
+|rr222x|yes|yes|no|no|nt|
+|rr2240|yes|no|no|no|nt|
+|rr231x|yes|yes|no|no|nt|
+|rr232x|yes|yes|yes|yes|nt|
+|rr2340|yes|yes|yes|no|nt|
+|rr2522|yes|no|no|no|nt|
+|rr2644|yes|no|no|no|nt|
+|rr264x|yes|yes|no|no|nt|
+|rr268x|yes|yes|no|no|nt|
+|rr62x|yes|yes|no|no|nt|
+|rr64x|yes|yes|yes|no|nt|
+|rr64xl|yes|yes|no|no|yes|
+
+nt = not tested
