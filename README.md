@@ -16,6 +16,11 @@ Thank's to dlder and his brother for the patch.
 https://forums.opensuse.org/showthread.php/535178-Unofficial-driver-for-any-Linux-for-the-quot-Highpoint-RocketRaid-232x-quot-!-(up-to-kernel-4-19-at-least)
 ```
 
+```
+If you need a module which is market as not working in tha table please open an issue.
+Then I will try to apply the patch for it.
+```
+
 Infos: https://wiki.gentoo.org/wiki/HighPoint_RocketRAID
 
 Status of the different modules:
