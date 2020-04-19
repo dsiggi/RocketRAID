@@ -37,7 +37,7 @@ Status of the different modules:
 |rr2340|yes|yes|yes|no|nt|
 |rr2522|yes|no|no|no|nt|
 |rr2644|yes|no|no|no|nt|
-|rr264x|yes|yes|no|no|nt|
+|rr264x|yes|yes|yes|no|nt|
 |rr268x|yes|yes|no|no|nt|
 |rr62x|yes|yes|no|no|nt|
 |rr64x|yes|yes|yes|no|nt|
