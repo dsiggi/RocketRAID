@@ -4,7 +4,7 @@
 
 EAPI=5
 
-inherit eutils linux-mod
+inherit eutils linux-mod linux-info
 
 MY_P=RR264x-Linux-Src-v${PV}-120817-1641
 DESCRIPTION="Kernel Module for the HighPoint RocketRaid 264x RAID Adapter"
@@ -33,6 +33,10 @@ src_unpack() {
 src_prepare() {
 	cd "${MY_S}"
 	epatch "${FILESDIR}"/rr264x-kernel-4-x.patch
+	if kernel_is -ge 4 15; then
+		epatch "${FILESDIR}"/rr264x-timer.patch
+	fi
+	
 }
 
 src_compile() {
