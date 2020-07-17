@@ -1,5 +1,10 @@
 # RocketRAID
 
+#### This repository is archived
+```
+I dont't own a RocketRAID card anymore. Feel free to clone this repository and do changes on it.
+```
+
 #### Disclaimer
 ```
 I am not responsible for any damage you made to your device or data.
